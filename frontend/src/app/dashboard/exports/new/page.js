@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -25,22 +25,35 @@ const blankDetail = () => ({
 });
 
 // ─── Product Search (SELL/DISPOSE/INTERNAL) ───────────────────
-function SellableProductSearch({ value, onSelect }) {
+function SellableProductSearch({ value, onSelect, supplierId }) {
   const { token } = useAuthStore();
   const [query, setQuery]     = useState(value?.name || '');
   const [results, setResults] = useState([]);
   const [open, setOpen]       = useState(false);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (value?.name) setQuery(value.name);
   }, [value]);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const search = async (q) => {
     setQuery(q);
     setLoading(true);
     try {
-      const res = await api.get(`/products?search=${encodeURIComponent(q)}&limit=8`);
+      let url = `/products?search=${encodeURIComponent(q)}&limit=8`;
+      if (supplierId) url += `&supplier_id=${supplierId}`;
+      const res = await api.get(url);
       const data = res.data;
       const list = Array.isArray(data) ? data : (data.data || []);
       setResults(list);
@@ -63,7 +76,7 @@ function SellableProductSearch({ value, onSelect }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
         <input
@@ -75,7 +88,7 @@ function SellableProductSearch({ value, onSelect }) {
         />
       </div>
       {open && results.length > 0 && (
-        <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+        <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto max-h-60">
           {results.map((p) => (
             <button
               key={p.id}
@@ -365,6 +378,7 @@ export default function NewExportPage() {
                     </label>
                     <SellableProductSearch
                       value={{ name: row.product_name }}
+                      supplierId={reason === 'RETURN' ? supplierId : undefined}
                       onSelect={(p) => setProduct(row._key, p)}
                     />
                     {row.product_code && (
