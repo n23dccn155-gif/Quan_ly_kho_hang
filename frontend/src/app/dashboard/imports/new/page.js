@@ -26,7 +26,7 @@ const blankDetail = () => ({
 });
 
 // ─── Product Search Dropdown ──────────────────────────────────
-function ProductSearch({ onSelect, supplierId }) {
+function ProductSearch({ onSelect, onClear, supplierId }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -58,7 +58,11 @@ function ProductSearch({ onSelect, supplierId }) {
           className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Tìm sản phẩm..."
           value={query}
-          onChange={(e) => search(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            search(val);
+            if (val === '' && onClear) onClear();
+          }}
           onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
           onBlur={() => setTimeout(() => setOpen(false), 200)}
         />
@@ -90,7 +94,7 @@ function ProductSearch({ onSelect, supplierId }) {
 }
 
 // ─── Supplier Search Dropdown ─────────────────────────────────
-function SupplierSearch({ onSelect, productIds, initialSupplierName }) {
+function SupplierSearch({ onSelect, onClear, productIds, initialSupplierName }) {
   const [query, setQuery] = useState(initialSupplierName || '');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -127,7 +131,11 @@ function SupplierSearch({ onSelect, productIds, initialSupplierName }) {
           className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium"
           placeholder="Tìm hoặc nhập tên nhà cung cấp..."
           value={query}
-          onChange={(e) => search(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            search(val);
+            if (val === '' && onClear) onClear();
+          }}
           onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
           onBlur={() => setTimeout(() => setOpen(false), 200)}
         />
@@ -310,6 +318,10 @@ export default function NewImportPage() {
                   setSupplierId(s.id);
                   setSupplierName(s.name);
                 }}
+                onClear={() => {
+                  setSupplierId('');
+                  setSupplierName('');
+                }}
               />
             </div>
 
@@ -440,6 +452,7 @@ export default function NewImportPage() {
                     <ProductSearch
                       supplierId={supplierId}
                       onSelect={(p) => setProduct(row._key, p)}
+                      onClear={() => setProduct(row._key, { id: '', name: '', product_code: '', unit: '', unit_price: '' })}
                     />
                     {row.product_name && (
                       <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">{row.product_name}</p>
