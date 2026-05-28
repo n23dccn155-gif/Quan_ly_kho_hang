@@ -270,7 +270,7 @@ export default function NewImportPage() {
       const created = res.data;
       router.push(`/dashboard/imports/${created.id}`);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.response?.data?.message || err.message);
     } finally {
       setSubmitting(false);
     }

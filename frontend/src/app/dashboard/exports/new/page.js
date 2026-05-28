@@ -258,22 +258,27 @@ export default function NewExportPage() {
 
     setSubmitting(true);
     try {
-      const res = await api.post(`/exports`, {
+      const payload = {
         reason: reason,
         export_date: exportDate,
-        customer_name: customerName,
-        note: note,
-        details: validDetails.map((d) => ({
-          product_id: d.product_id,
+        customer_name: reason === 'SELL' ? (customerName || null) : null,
+        delivery_address: reason === 'SELL' ? (deliveryAddress || null) : null,
+        supplier_id: reason === 'RETURN' ? (parseInt(supplierId) || null) : null,
+        note: note || null,
+        items: validDetails.map((d) => ({
+          product_id: parseInt(d.product_id),
           quantity: parseInt(d.quantity),
-          unit_price: parseFloat(d.selling_price) || 0,
+          selling_price: parseFloat(d.selling_price) || 0,
+          import_detail_id: d.import_detail_id ? parseInt(d.import_detail_id) : undefined,
         })),
-      });
+      };
+
+      const res = await api.post(`/exports`, payload);
 
       const created = res.data;
       router.push(`/dashboard/exports/${created.id}`);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.response?.data?.message || err.message);
     } finally {
       setSubmitting(false);
     }
