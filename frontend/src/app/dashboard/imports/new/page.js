@@ -32,6 +32,11 @@ function ProductSearch({ onSelect, supplierId }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Clear results if supplier changes so it refetches
+  useEffect(() => {
+    setResults([]);
+  }, [supplierId]);
+
   const search = async (q) => {
     setQuery(q);
     setLoading(true);
@@ -94,6 +99,11 @@ function SupplierSearch({ onSelect, productIds, initialSupplierName }) {
   useEffect(() => {
     if (initialSupplierName) setQuery(initialSupplierName);
   }, [initialSupplierName]);
+
+  // Clear results if product dependencies change so it refetches
+  useEffect(() => {
+    setResults([]);
+  }, [productIds.join(',')]);
 
   const search = async (q) => {
     setQuery(q);
