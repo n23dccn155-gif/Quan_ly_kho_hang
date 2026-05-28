@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -63,21 +61,6 @@ export default function ImportDetailPage() {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleExportPDF = async () => {
-    if (!printRef.current) return;
-    try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`PhieuNhapKho_${receipt?.receipt_code}.pdf`);
-    } catch (e) {
-      alert('Không thể xuất PDF: ' + e.message);
-    }
   };
 
   // Inspect modal
@@ -206,13 +189,9 @@ export default function ImportDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handlePrint} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+          <button onClick={handlePrint} className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
             <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">In phiếu</span>
-          </button>
-          <button onClick={handleExportPDF} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Xuất PDF</span>
+            <span className="hidden sm:inline">In / Tải PDF</span>
           </button>
           <StatusBadge status={receipt.status} />
         </div>
