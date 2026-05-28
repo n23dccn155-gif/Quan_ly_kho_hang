@@ -106,14 +106,11 @@ export default function ImportsPage() {
   const handleDelete = async (id, code) => {
     if (!confirm(`Xoá phiếu nhập ${code}?`)) return;
     try {
-      const res = await fetch(`${API}/api/imports/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      await api.delete(`/imports/${id}`);
       fetchReceipts();
+      fetchStats();
     } catch (e) {
-      alert(e.message);
+      alert(e.response?.data?.error || e.message);
     }
   };
 
