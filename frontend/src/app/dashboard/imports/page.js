@@ -10,8 +10,7 @@ import {
   Truck, CheckCircle2, XCircle, Clock, Package, AlertCircle
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Status config ────────────────────────────────────────────
 const STATUS_MAP = {
   IN_TRANSIT:  { label: 'Đang vận chuyển', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30',    icon: Truck },
@@ -67,11 +66,8 @@ export default function ImportsPage() {
         ...(fromDate && { from_date: fromDate }),
         ...(toDate   && { to_date: toDate }),
       });
-      const res = await fetch(`${API}/api/imports?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Lỗi tải danh sách');
-      const data = await res.json();
+      const res = await api.get(`/imports?${params}`);
+      const data = res.data;
       setReceipts(data.data || []);
       setPagination(data.pagination || {});
     } catch (e) {
@@ -84,10 +80,8 @@ export default function ImportsPage() {
   // ── fetch stats ────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/imports/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) setStats(await res.json());
+      const res = await api.get('/imports/stats');
+      setStats(res.data);
     } catch (_) {}
   }, [token]);
 
