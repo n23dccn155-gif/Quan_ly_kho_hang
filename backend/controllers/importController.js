@@ -48,6 +48,7 @@ exports.getAll = async (req, res) => {
       where.OR = [
         { receipt_code: { contains: search, mode: 'insensitive' } },
         { supplier: { name: { contains: search, mode: 'insensitive' } } },
+        { details: { some: { product: { name: { contains: search, mode: 'insensitive' } } } } },
       ];
     }
     if (status) where.status = status;
