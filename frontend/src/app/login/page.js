@@ -60,7 +60,7 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4">
       {/* Dynamic Background Glowing Circles */}
-      <div className="absolute top-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-violet-600/20 blur-[100px] animate-pulse"></div>
+      <div className="absolute top-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-indigo-600/20 blur-[100px] animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-blue-600/20 blur-[100px] animate-pulse delay-700"></div>
 
       {/* Glassmorphic Container */}
@@ -68,10 +68,10 @@ export default function LoginPage() {
         
         {/* Header/Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-blue-500 shadow-lg shadow-violet-500/20">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 shadow-lg shadow-indigo-500/20">
             <LogIn className="h-7 w-7 text-white" />
           </div>
-          <h1 className="bg-gradient-to-r from-violet-400 via-blue-400 to-teal-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
+          <h1 className="bg-gradient-to-r from-indigo-400 via-blue-400 to-teal-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
             WMS & LOGISTICS
           </h1>
           <p className="mt-1.5 text-sm text-slate-400">
@@ -103,7 +103,7 @@ export default function LoginPage() {
                 type="text"
                 autoComplete="username"
                 placeholder="Nhập tên đăng nhập (ví dụ: admin)"
-                className="w-full rounded-lg border border-slate-800 bg-slate-950/80 py-2.5 pr-3 pl-10 text-sm text-slate-200 placeholder-slate-600 transition-all duration-200 focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-slate-800 bg-slate-950/80 py-2.5 pr-3 pl-10 text-sm text-slate-200 placeholder-slate-600 transition-all duration-200 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none"
               />
             </div>
             {errors.username && (
@@ -127,7 +127,7 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Nhập mật khẩu (ví dụ: admin123)"
-                className="w-full rounded-lg border border-slate-800 bg-slate-950/80 py-2.5 pr-10 pl-10 text-sm text-slate-200 placeholder-slate-600 transition-all duration-200 focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-slate-800 bg-slate-950/80 py-2.5 pr-10 pl-10 text-sm text-slate-200 placeholder-slate-600 transition-all duration-200 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none"
               />
               <button
                 type="button"
@@ -146,7 +146,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || authLoading}
-            className="group relative flex w-full justify-center rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:from-violet-500 hover:to-blue-500 hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+            className="group relative flex w-full justify-center rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:from-indigo-500 hover:to-blue-500 hover:shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
           >
             {loading || authLoading ? (
               <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function LoginPage() {
         <div className="mt-8 rounded-lg bg-slate-950/40 p-4 border border-slate-800/40 text-center text-xs text-slate-500">
           <p className="font-semibold text-slate-400 mb-1.5">Tài khoản demo kiểm thử:</p>
           <div className="flex flex-col gap-1 text-[11px]">
-            <p>🔑 Admin: <span className="text-violet-400 font-medium font-mono">admin</span> / <span className="text-violet-400 font-mono">admin123</span></p>
+            <p>🔑 Admin: <span className="text-indigo-400 font-medium font-mono">admin</span> / <span className="text-indigo-400 font-mono">admin123</span></p>
             <p>🔑 Staff: <span className="text-blue-400 font-medium font-mono">nhanvien1</span> / <span className="text-blue-400 font-mono">nhanvien123</span></p>
           </div>
         </div>
