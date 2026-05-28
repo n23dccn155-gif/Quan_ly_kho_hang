@@ -11,8 +11,7 @@ import {
   Loader2
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Status config ────────────────────────────────────────────
 const STATUS_MAP = {
   IN_TRANSIT:  { label: 'Đang vận chuyển', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30',     icon: Truck,        step: 1 },
@@ -72,12 +71,8 @@ export default function ImportDetailPage() {
   const fetchReceipt = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/imports/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Không tìm thấy phiếu nhập');
-      const data = await res.json();
-      setReceipt(data);
+      const res = await api.get(`/imports/${id}`);
+      setReceipt(res.data);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -92,15 +87,7 @@ export default function ImportDetailPage() {
     setActionLoading(action);
     setError('');
     try {
-      const res = await fetch(`${API}/api/imports/${id}/${action}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Thao tác thất bại');
-      }
+      const res = await api.patch(`/imports/${id}/${action}`, body);
       await fetchReceipt();
     } catch (e) {
       setError(e.message);

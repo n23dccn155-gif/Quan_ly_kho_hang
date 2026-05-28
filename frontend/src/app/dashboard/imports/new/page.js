@@ -10,8 +10,7 @@ import {
   Search, ChevronDown, X
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Blank detail row ─────────────────────────────────────────
 const blankDetail = () => ({
   _key: Math.random(),
@@ -41,18 +40,13 @@ function ProductSearch({ value, onSelect }) {
 
   const search = async (q) => {
     setQuery(q);
-    if (q.length < 1) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/products?search=${encodeURIComponent(q)}&limit=8`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        setResults(list);
-        setOpen(true);
-      }
+      const res = await api.get(`/products?search=${encodeURIComponent(q)}&limit=8`);
+      const data = res.data;
+      const list = Array.isArray(data) ? data : (data.data || []);
+      setResults(list);
+      setOpen(true);
     } catch (_) {}
     setLoading(false);
   };
@@ -66,7 +60,7 @@ function ProductSearch({ value, onSelect }) {
           placeholder="Tìm sản phẩm..."
           value={query}
           onChange={(e) => search(e.target.value)}
-          onFocus={() => results.length > 0 && setOpen(true)}
+          onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
         />
       </div>
       {open && results.length > 0 && (
@@ -120,17 +114,13 @@ export default function NewImportPage() {
       setLoading(true);
       try {
         const [sRes, lRes] = await Promise.all([
-          fetch(`${API}/api/suppliers?limit=200`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/locations`, { headers: { Authorization: `Bearer ${token}` } }),
+          api.get(`/suppliers?limit=200`),
+          api.get(`/locations`),
         ]);
-        if (sRes.ok) {
-          const sd = await sRes.json();
-          setSuppliers(Array.isArray(sd) ? sd : (sd.data || []));
-        }
-        if (lRes.ok) {
-          const ld = await lRes.json();
-          setLocations(Array.isArray(ld) ? ld : (ld.data || []));
-        }
+        const sd = sRes.data;
+        setSuppliers(Array.isArray(sd) ? sd : (sd.data || []));
+        const ld = lRes.data;
+        setLocations(Array.isArray(ld) ? ld : (ld.data || []));
       } catch (_) {}
       setLoading(false);
     };
@@ -175,36 +165,24 @@ export default function NewImportPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/api/imports`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          supplier_id: parseInt(supplierId),
-          import_date: importDate,
-          note,
-          transport_note: transportNote,
-          estimated_delivery_days: estDays ? parseInt(estDays) : undefined,
-          details: validDetails.map((d) => ({
-            product_id: d.product_id,
-            quantity: parseInt(d.quantity),
-            unit_price: parseFloat(d.unit_price) || 0,
-            batch_code: d.batch_code || null,
-            expiry_date: d.expiry_date || null,
-            mfg_date: d.mfg_date || null,
-            location_id: d.location_id ? parseInt(d.location_id) : null,
-          })),
-        }),
+      const res = await api.post(`/imports`, {
+        supplier_id: parseInt(supplierId),
+        import_date: importDate,
+        note,
+        transport_note: transportNote,
+        estimated_delivery_days: estDays ? parseInt(estDays) : undefined,
+        details: validDetails.map((d) => ({
+          product_id: d.product_id,
+          quantity: parseInt(d.quantity),
+          unit_price: parseFloat(d.unit_price) || 0,
+          batch_code: d.batch_code || null,
+          expiry_date: d.expiry_date || null,
+          mfg_date: d.mfg_date || null,
+          location_id: d.location_id ? parseInt(d.location_id) : null,
+        })),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Lỗi khi tạo phiếu nhập');
-      }
-
-      const created = await res.json();
+      const created = res.data;
       router.push(`/dashboard/imports/${created.id}`);
     } catch (err) {
       setError(err.message);
