@@ -45,11 +45,17 @@ export default function ImportsPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
 
-  // Filters
+  // Input states
   const [search, setSearch]     = useState('');
   const [status, setStatus]     = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate]     = useState('');
+  
+  // Filter states applied to API
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  
   const [page, setPage]         = useState(1);
 
   // Stats
@@ -62,10 +68,10 @@ export default function ImportsPage() {
     try {
       const params = new URLSearchParams({
         page, limit: 15,
-        ...(search   && { search }),
-        ...(status   && { status }),
-        ...(fromDate && { from_date: fromDate }),
-        ...(toDate   && { to_date: toDate }),
+        ...(filterSearch   && { search: filterSearch }),
+        ...(status         && { status }),
+        ...(filterFromDate && { from_date: filterFromDate }),
+        ...(filterToDate   && { to_date: filterToDate }),
       });
       const res = await api.get(`/imports?${params}`);
       const data = res.data;
@@ -76,7 +82,7 @@ export default function ImportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, search, status, fromDate, toDate]);
+  }, [token, page, filterSearch, status, filterFromDate, filterToDate]);
 
   // ── fetch stats ────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
@@ -89,7 +95,12 @@ export default function ImportsPage() {
   useEffect(() => { fetchReceipts(); fetchStats(); }, [fetchReceipts, fetchStats]);
 
   // reset page khi filter thay đổi
-  const applyFilter = () => { setPage(1); fetchReceipts(); };
+  const applyFilter = () => {
+    setFilterSearch(search);
+    setFilterFromDate(fromDate);
+    setFilterToDate(toDate);
+    setPage(1);
+  };
 
   // ── delete ─────────────────────────────────────────────────
   const handleDelete = async (id, code) => {
@@ -187,7 +198,7 @@ export default function ImportsPage() {
       )}
 
       {/* ── Filters ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -201,20 +212,26 @@ export default function ImportsPage() {
           />
         </div>
         {/* From Date */}
-        <input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          title="Từ ngày"
-        />
-        <input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          title="Đến ngày"
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Từ</span>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title="Từ ngày"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Đến</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title="Đến ngày"
+          />
+        </div>
         <button
           onClick={applyFilter}
           className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
@@ -222,9 +239,13 @@ export default function ImportsPage() {
           <Filter className="h-4 w-4" />
           Lọc
         </button>
-        {(search || status || fromDate || toDate) && (
-          <button
-            onClick={() => { setSearch(''); setStatus(''); setFromDate(''); setToDate(''); setPage(1); }}
+            {(search || status || fromDate || toDate || filterSearch || filterFromDate || filterToDate) && (
+              <button
+                onClick={() => {
+                  setSearch(''); setFromDate(''); setToDate(''); setStatus('');
+                  setFilterSearch(''); setFilterFromDate(''); setFilterToDate('');
+                  setPage(1);
+                }}
             className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
