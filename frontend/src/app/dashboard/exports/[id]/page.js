@@ -11,8 +11,7 @@ import {
   MapPin, Hash, DollarSign, Loader2
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Configs ──────────────────────────────────────────────────
 const STATUS_MAP = {
   PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: Clock },
@@ -85,12 +84,8 @@ export default function ExportDetailPage() {
   const fetchReceipt = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/exports/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Không tìm thấy phiếu xuất');
-      const data = await res.json();
-      setReceipt(data);
+      const res = await api.get(`/exports/${id}`);
+      setReceipt(res.data);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -105,18 +100,10 @@ export default function ExportDetailPage() {
     setActionLoading(action);
     setError('');
     try {
-      const res = await fetch(`${API}/api/exports/${id}/${action}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Thao tác thất bại');
-      }
+      await api.patch(`/exports/${id}/${action}`, body);
       await fetchReceipt();
     } catch (e) {
-      setError(e.message);
+      setError(e.response?.data?.error || e.message || 'Thao tác thất bại');
     } finally {
       setActionLoading('');
     }

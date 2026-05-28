@@ -11,8 +11,7 @@ import {
   CheckCircle2, XCircle, Clock
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Status & Reason config ───────────────────────────────────
 const STATUS_MAP = {
   PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: Clock },
@@ -86,11 +85,8 @@ export default function ExportsPage() {
         ...(fromDate && { from_date: fromDate }),
         ...(toDate   && { to_date: toDate }),
       });
-      const res = await fetch(`${API}/api/exports?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Lỗi tải danh sách');
-      const data = await res.json();
+      const res = await api.get(`/exports?${params}`);
+      const data = res.data;
       setReceipts(data.data || []);
       setPagination(data.pagination || {});
     } catch (e) {
@@ -103,10 +99,8 @@ export default function ExportsPage() {
   // ── fetch stats ────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/exports/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) setStats(await res.json());
+      const res = await api.get('/exports/stats');
+      setStats(res.data);
     } catch (_) {}
   }, [token]);
 

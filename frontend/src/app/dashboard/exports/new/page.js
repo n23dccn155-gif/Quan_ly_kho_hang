@@ -10,8 +10,7 @@ import {
   Search, ChevronDown, X, User, MapPin, Loader2
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
+import api from '@/lib/api';
 // ─── Blank detail row ─────────────────────────────────────────
 const blankDetail = () => ({
   _key: Math.random(),
@@ -39,18 +38,13 @@ function SellableProductSearch({ value, onSelect }) {
 
   const search = async (q) => {
     setQuery(q);
-    if (q.length < 1) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/products?search=${encodeURIComponent(q)}&limit=8`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        setResults(list);
-        setOpen(true);
-      }
+      const res = await api.get(`/products?search=${encodeURIComponent(q)}&limit=8`);
+      const data = res.data;
+      const list = Array.isArray(data) ? data : (data.data || []);
+      setResults(list);
+      setOpen(true);
     } catch (_) {}
     setLoading(false);
   };
@@ -60,14 +54,10 @@ function SellableProductSearch({ value, onSelect }) {
     setOpen(false);
     // Fetch sellable stock
     try {
-      const res = await fetch(`${API}/api/exports/sellable-stock/${p.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onSelect({ ...p, max_qty: data.sellable_stock });
-        return;
-      }
+      const stRes = await api.get(`/exports/sellable-stock/${p.id}`);
+      const stData = stRes.data;
+      onSelect({ ...p, max_qty: stData.sellable_stock });
+      return;
     } catch (e) {}
     onSelect({ ...p, max_qty: 0 });
   };
@@ -81,7 +71,7 @@ function SellableProductSearch({ value, onSelect }) {
           placeholder="Tìm sản phẩm (còn tồn kho)..."
           value={query}
           onChange={(e) => search(e.target.value)}
-          onFocus={() => results.length > 0 && setOpen(true)}
+          onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
         />
       </div>
       {open && results.length > 0 && (
@@ -108,7 +98,6 @@ function SellableProductSearch({ value, onSelect }) {
 
 export default function NewExportPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
 
   const [loading, setLoading]       = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -129,16 +118,14 @@ export default function NewExportPage() {
     if (reason === 'RETURN' && suppliers.length === 0) {
       const load = async () => {
         try {
-          const res = await fetch(`${API}/api/suppliers?limit=200`, { headers: { Authorization: `Bearer ${token}` } });
-          if (res.ok) {
-            const data = await res.json();
-            setSuppliers(Array.isArray(data) ? data : (data.data || []));
-          }
+          const res = await api.get(`/suppliers?limit=200`);
+          const data = res.data;
+          setSuppliers(Array.isArray(data) ? data : (data.data || []));
         } catch (e) {}
       };
       load();
     }
-  }, [reason, suppliers.length, token]);
+  }, [reason, suppliers.length]);
 
   // ── Detail helpers ──────────────────────────────────────────
   const addRow = () => setDetails((d) => [...d, blankDetail()]);
@@ -182,34 +169,19 @@ export default function NewExportPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/api/exports`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          reason,
-          export_date: exportDate,
-          customer_name: reason === 'SELL' ? customerName : undefined,
-          delivery_address: reason === 'SELL' ? deliveryAddress : undefined,
-          supplier_id: reason === 'RETURN' ? supplierId : undefined,
-          note,
-          items: validDetails.map((d) => ({
-            product_id: d.product_id,
-            quantity: d.quantity,
-            selling_price: d.selling_price || 0,
-            import_detail_id: reason === 'RETURN' ? d.import_detail_id : undefined,
-          })),
-        }),
+      const res = await api.post(`/exports`, {
+        reason: reason,
+        export_date: exportDate,
+        customer_name: customerName,
+        note: note,
+        details: validDetails.map((d) => ({
+          product_id: d.product_id,
+          quantity: parseInt(d.quantity),
+          unit_price: parseFloat(d.selling_price) || 0,
+        })),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Lỗi khi tạo phiếu xuất');
-      }
-
-      const created = await res.json();
+      const created = res.data;
       router.push(`/dashboard/exports/${created.id}`);
     } catch (err) {
       setError(err.message);
