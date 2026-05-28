@@ -8,7 +8,7 @@ import * as z from 'zod';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-  Plus, Search, Edit2, Trash2, X, AlertCircle, 
+  Plus, Search, Edit2, Trash2, X, AlertCircle, Eye,
   Check, Loader2, Sparkles, MapPin, Phone, Mail, User, Info, Navigation, Warehouse
 } from 'lucide-react';
 
@@ -16,7 +16,7 @@ import {
 const SupplierMap = dynamic(() => import('@/components/SupplierMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full min-h-[400px] w-full items-center justify-center bg-slate-950 border border-slate-900 rounded-xl text-slate-400">
+    <div className="flex h-full min-h-[400px] w-full items-center justify-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-900 rounded-xl text-slate-400">
       <div className="flex flex-col items-center gap-2">
         <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
         <p className="text-xs">Đang tải bản đồ định vị...</p>
@@ -47,13 +47,17 @@ export default function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   
-  // Selection
+  // Selection (For Map highlighting)
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   
-  // Modal & Form States
+  // Modals & Details Form States
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [formErrorMsg, setFormErrorMsg] = useState('');
+  
+  // View Detail Modal State
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailSupplier, setDetailSupplier] = useState(null);
   
   // Temp coordinates for map selection during Add/Edit
   const [tempLat, setTempLat] = useState(10.762622);
@@ -120,7 +124,6 @@ export default function SuppliersPage() {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
 
-        // Update form values
         setValue('latitude', Number(lat.toFixed(6)));
         setValue('longitude', Number(lon.toFixed(6)));
         setTempLat(lat);
@@ -136,7 +139,6 @@ export default function SuppliersPage() {
             const roadDistance = Number((osrmData.routes[0].distance / 1000).toFixed(1));
             setValue('distance_km', roadDistance);
           } else {
-            // Straight-line fallback
             const straightDist = calculateHaversine(10.762622, 106.660172, lat, lon);
             setValue('distance_km', straightDist);
           }
@@ -175,7 +177,6 @@ export default function SuppliersPage() {
     setTempLat(10.762622);
     setTempLng(106.660172);
     
-    // Reset fields
     setValue('name', '');
     setValue('contact_person', '');
     setValue('phone', '');
@@ -207,6 +208,12 @@ export default function SuppliersPage() {
     setValue('longitude', lng);
     setTempLat(lat);
     setTempLng(lng);
+  };
+
+  // View Details Modal open
+  const handleDetailClick = (supplier) => {
+    setDetailSupplier(supplier);
+    setIsDetailOpen(true);
   };
 
   // Callback when user clicks on map during select mode
@@ -265,11 +272,11 @@ export default function SuppliersPage() {
       {/* Title Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-violet-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-violet-500 dark:text-violet-400" />
             Định vị & Quản lý Nhà cung cấp
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Xem vị trí nhà cung cấp trên bản đồ, tính toán cự ly vận chuyển đường bộ và cập nhật thông tin liên hệ.
           </p>
         </div>
@@ -277,7 +284,7 @@ export default function SuppliersPage() {
         {isAdmin && (
           <button
             onClick={handleAddClick}
-            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:from-violet-500 hover:to-blue-500 hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:from-violet-500 hover:to-blue-500 hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98] transition-all"
           >
             <Plus className="h-4.5 w-4.5" />
             Thêm nhà cung cấp
@@ -286,14 +293,14 @@ export default function SuppliersPage() {
       </div>
 
       {/* Warehouse Info Banner Card */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-violet-500/20 bg-violet-600/5 backdrop-blur-md">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/25">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-violet-500/10 dark:border-violet-500/20 bg-white dark:bg-violet-600/5 shadow-sm backdrop-blur-md">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
           <Warehouse className="h-5.5 w-5.5" />
         </div>
         <div className="space-y-0.5">
-          <p className="text-sm font-bold text-white">Vị trí trung tâm: Tổng kho Bách Hóa Xanh</p>
-          <p className="text-xs text-slate-400 leading-4">
-            Được định vị tại <b>Quận 10, Thành phố Hồ Chí Minh</b> (Tọa độ GPS: <span className="font-mono text-violet-400">10.762622, 106.660172</span>).
+          <p className="text-sm font-bold text-slate-800 dark:text-white">Vị trí trung tâm: Tổng kho Bách Hóa Xanh</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-4">
+            Được định vị tại <b>Quận 10, Thành phố Hồ Chí Minh</b> (Tọa độ GPS: <span className="font-mono text-violet-600 dark:text-violet-400 font-semibold">10.762622, 106.660172</span>).
             Mọi tuyến đường giao thông đường bộ và cự ly vận tải (km) hiển thị dưới đây đều lấy tổng kho làm điểm xuất phát.
           </p>
         </div>
@@ -305,7 +312,7 @@ export default function SuppliersPage() {
         {/* Left Side: Supplier List (5 Cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 dark:text-slate-500">
               <Search className="h-4 w-4" />
             </span>
             <input
@@ -313,135 +320,109 @@ export default function SuppliersPage() {
               placeholder="Tìm theo tên nhà cung cấp, địa chỉ..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-800 bg-slate-900/30 py-2 pr-3 pl-10 text-sm text-slate-200 placeholder-slate-600 focus:border-violet-500/80 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 py-2 pr-3 pl-10 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:border-violet-500/80 focus:outline-none shadow-sm"
             />
           </div>
 
           {loading ? (
-            <div className="flex h-80 flex-col items-center justify-center gap-2 rounded-xl border border-slate-900 bg-slate-900/10">
+            <div className="flex h-96 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900/10">
               <Loader2 className="h-7 w-7 animate-spin text-violet-500" />
               <span className="text-xs text-slate-500">Đang tải danh sách nhà cung cấp...</span>
             </div>
           ) : filteredSuppliers.length === 0 ? (
-            <div className="flex h-80 flex-col items-center justify-center gap-2 rounded-xl border border-slate-900 bg-slate-900/10 text-center p-4">
-              <Info className="h-6 w-6 text-slate-600" />
+            <div className="flex h-96 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900/10 text-center p-4">
+              <Info className="h-6 w-6 text-slate-400" />
               <span className="text-xs text-slate-500">Không tìm thấy đối tác nào.</span>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-800">
+            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               {filteredSuppliers.map((sup) => {
                 const isSelected = selectedSupplier && selectedSupplier.id === sup.id;
                 return (
                   <div
                     key={sup.id}
                     onClick={() => setSelectedSupplier(sup)}
-                    className={`relative rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:border-slate-700 ${
+                    className={`relative rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm ${
                       isSelected
-                        ? 'border-violet-500/40 bg-violet-600/5 shadow-md shadow-violet-500/5'
-                        : 'border-slate-800/80 bg-slate-900/10 hover:bg-slate-900/30'
+                        ? 'border-violet-500/40 bg-violet-500/5 dark:bg-violet-600/5'
+                        : 'border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/10'
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-slate-100">{sup.name}</h3>
-                        <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                          <User className="h-3 w-3 text-slate-500" />
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{sup.name}</h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                          <User className="h-3 w-3 text-slate-400" />
                           Đại diện: {sup.contact_person || '—'}
                         </p>
                       </div>
                       
                       {sup.distance_km && (
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-950 border border-slate-800 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
-                          <Navigation className="h-2.5 w-2.5 text-violet-500" />
+                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                          <Navigation className="h-2.5 w-2.5" />
                           {sup.distance_km} km
                         </span>
                       )}
                     </div>
 
-                    <p className="mt-2.5 text-xs text-slate-500 line-clamp-1 flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-slate-600 shrink-0" />
+                    <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1 flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
                       {sup.address || '—'}
                     </p>
 
-                    {isAdmin && (
-                      <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-800/40 pt-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClick(sup);
-                          }}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-blue-400"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(sup.id, sup.name);
-                          }}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-red-400"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
+                    {/* Action buttons inside card */}
+                    <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800/40 pt-2.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDetailClick(sup);
+                        }}
+                        title="Xem chi tiết"
+                        className="rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-600 dark:hover:text-violet-400"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(sup);
+                            }}
+                            title="Sửa"
+                            className="rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-500 dark:hover:text-blue-400"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(sup.id, sup.name);
+                            }}
+                            title="Ẩn"
+                            className="rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-red-500 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-
-          {/* Supplier Details Card Panel */}
-          {selectedSupplier && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-4 space-y-3.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Chi tiết nhà cung cấp
-              </h4>
-              
-              <div className="space-y-2.5 text-xs text-slate-300">
-                <div className="flex justify-between items-start border-b border-slate-800/60 pb-2">
-                  <span className="text-slate-400">Tên đối tác:</span>
-                  <span className="font-semibold text-right max-w-[200px]">{selectedSupplier.name}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-2">
-                  <span className="text-slate-400">Điện thoại:</span>
-                  <span className="font-mono text-slate-200 flex items-center gap-1">
-                    <Phone className="h-3 w-3 text-slate-500" />
-                    {selectedSupplier.phone || '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-800/60 pb-2">
-                  <span className="text-slate-400">Email:</span>
-                  <span className="text-slate-200 flex items-center gap-1">
-                    <Mail className="h-3 w-3 text-slate-500" />
-                    {selectedSupplier.email || '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-start border-b border-slate-800/60 pb-2">
-                  <span className="text-slate-400">Địa chỉ kho:</span>
-                  <span className="text-slate-200 text-right max-w-[200px]">{selectedSupplier.address || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Tọa độ định vị:</span>
-                  <span className="font-mono text-[10px] text-violet-400">
-                    {selectedSupplier.latitude && selectedSupplier.longitude 
-                      ? `${selectedSupplier.latitude.toFixed(5)}, ${selectedSupplier.longitude.toFixed(5)}` 
-                      : 'Chưa có vị trí'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right Side: Leaflet Routing Map (7 Cols) */}
-        <div className="lg:col-span-7 flex flex-col h-[500px] lg:h-[650px]">
-          <div className="flex items-center justify-between border-b border-slate-900 pb-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="lg:col-span-7 flex flex-col h-[500px] lg:h-[610px]">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-900 pb-2 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Bản đồ định vị & Tuyến đường Logistics (OSRM)
             </span>
             {selectedSupplier && selectedSupplier.latitude && (
-              <span className="text-[11px] text-violet-400 flex items-center gap-1">
+              <span className="text-[11px] text-violet-600 dark:text-violet-400 flex items-center gap-1 font-semibold">
                 <Navigation className="h-3 w-3" />
                 Đường bộ thực tế: {selectedSupplier.distance_km} km
               </span>
@@ -456,23 +437,112 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      {/* Add / Edit Supplier Modal */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-4xl rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-2xl my-8 relative">
+      {/* Supplier Detail Modal */}
+      {isDetailOpen && detailSupplier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-lg rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl relative text-slate-800 dark:text-slate-200">
             <button
-              onClick={() => setIsFormOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white z-50"
+              onClick={() => setIsDetailOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h3 className="text-lg font-bold text-white mb-6">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
+                <Warehouse className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Chi tiết nhà cung cấp
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium font-mono uppercase">ID: #{detailSupplier.id}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 text-sm">
+              <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase shrink-0">Tên đối tác:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-right pl-4">{detailSupplier.name}</span>
+              </div>
+              
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase">Người đại diện:</span>
+                <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1">
+                  <User className="h-3.5 w-3.5 text-slate-400" />
+                  {detailSupplier.contact_person || '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase">Điện thoại:</span>
+                <span className="text-slate-700 dark:text-slate-300 font-mono flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5 text-slate-400" />
+                  {detailSupplier.phone || '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase">Email liên hệ:</span>
+                <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5 text-slate-400" />
+                  {detailSupplier.email || '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase shrink-0">Địa chỉ kho hàng:</span>
+                <span className="text-slate-700 dark:text-slate-300 text-right pl-4">{detailSupplier.address || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <span className="text-slate-400 text-xs font-semibold uppercase">Cự ly thực tế (OSRM):</span>
+                <span className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
+                  <Navigation className="h-3.5 w-3.5" />
+                  {detailSupplier.distance_km ? `${detailSupplier.distance_km} km` : '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs font-semibold uppercase">Tọa độ GPS:</span>
+                <span className="font-mono text-xs text-violet-600 dark:text-violet-400">
+                  {detailSupplier.latitude && detailSupplier.longitude 
+                    ? `${detailSupplier.latitude.toFixed(6)}, ${detailSupplier.longitude.toFixed(6)}` 
+                    : 'Chưa xác định'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsDetailOpen(false)}
+                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-5 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+              >
+                Đóng lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Supplier Modal */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-4xl rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl my-8 relative text-slate-800 dark:text-slate-200">
+            <button
+              onClick={() => setIsFormOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white z-50"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">
               {editingSupplier ? 'Chỉnh sửa thông tin đối tác' : 'Đăng ký nhà cung cấp mới'}
             </h3>
 
             {formErrorMsg && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3.5 text-sm text-red-400">
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3.5 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="h-5 w-5" />
                 <p className="font-medium">{formErrorMsg}</p>
               </div>
@@ -492,10 +562,10 @@ export default function SuppliersPage() {
                       {...register('name')}
                       type="text"
                       placeholder="Tên đối tác (ví dụ: CP Food)"
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-slate-200 focus:border-violet-500/80 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-violet-500/80 focus:outline-none"
                     />
                     {errors.name && (
-                      <p className="text-xs text-red-400">{errors.name.message}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{errors.name.message}</p>
                     )}
                   </div>
 
@@ -508,10 +578,10 @@ export default function SuppliersPage() {
                       {...register('contact_person')}
                       type="text"
                       placeholder="Họ và tên người đại diện"
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-slate-200 focus:border-violet-500/80 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-violet-500/80 focus:outline-none"
                     />
                     {errors.contact_person && (
-                      <p className="text-xs text-red-400">{errors.contact_person.message}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{errors.contact_person.message}</p>
                     )}
                   </div>
 
@@ -524,10 +594,10 @@ export default function SuppliersPage() {
                       {...register('phone')}
                       type="text"
                       placeholder="Số hotline hoặc di động"
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-slate-200 focus:border-violet-500/80 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-violet-500/80 focus:outline-none"
                     />
                     {errors.phone && (
-                      <p className="text-xs text-red-400">{errors.phone.message}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{errors.phone.message}</p>
                     )}
                   </div>
 
@@ -540,10 +610,10 @@ export default function SuppliersPage() {
                       {...register('email')}
                       type="email"
                       placeholder="doitac@gmail.com"
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-slate-200 focus:border-violet-500/80 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-violet-500/80 focus:outline-none"
                     />
                     {errors.email && (
-                      <p className="text-xs text-red-400">{errors.email.message}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
                     )}
                   </div>
 
@@ -557,28 +627,28 @@ export default function SuppliersPage() {
                         {...register('address')}
                         type="text"
                         placeholder="Số nhà, Tên đường, Tỉnh/Thành phố"
-                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-slate-200 focus:border-violet-500/80 focus:outline-none"
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-violet-500/80 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={handleGeocodeAddress}
                         disabled={geocoding}
-                        className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 px-3 text-xs font-semibold text-white border border-slate-700 hover:border-slate-600 disabled:opacity-50 transition-colors"
+                        className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 px-3 text-xs font-semibold text-slate-700 dark:text-white border border-slate-300 dark:border-slate-700 disabled:opacity-50 transition-colors"
                       >
                         {geocoding ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          <MapPin className="h-3.5 w-3.5 text-violet-400" />
+                          <MapPin className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
                         )}
                         Định vị
                       </button>
                     </div>
                     {errors.address && (
-                      <p className="text-xs text-red-400">{errors.address.message}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{errors.address.message}</p>
                     )}
                   </div>
 
-                  {/* Latitude & Longitude (Readonly, filled by map click or geocoding search) */}
+                  {/* Latitude & Longitude */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -589,7 +659,7 @@ export default function SuppliersPage() {
                         type="number"
                         step="any"
                         readOnly
-                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-slate-400 focus:outline-none cursor-not-allowed"
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 py-2 px-3 text-xs text-slate-500 dark:text-slate-400 focus:outline-none cursor-not-allowed"
                       />
                     </div>
                     
@@ -602,12 +672,12 @@ export default function SuppliersPage() {
                         type="number"
                         step="any"
                         readOnly
-                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-slate-400 focus:outline-none cursor-not-allowed"
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 py-2 px-3 text-xs text-slate-500 dark:text-slate-400 focus:outline-none cursor-not-allowed"
                       />
                     </div>
                   </div>
 
-                  {/* Distance (calculated from OSRM actual road network) */}
+                  {/* Distance (calculated from OSRM) */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                       Khoảng cách vận chuyển đường bộ (km)
@@ -617,7 +687,7 @@ export default function SuppliersPage() {
                       type="number"
                       step="any"
                       readOnly
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-sm text-teal-400 font-semibold focus:outline-none cursor-not-allowed"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 py-2 px-3 text-sm text-teal-600 dark:text-teal-400 font-bold focus:outline-none cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -639,11 +709,11 @@ export default function SuppliersPage() {
               </div>
 
               {/* Form Buttons */}
-              <div className="flex justify-end gap-3 border-t border-slate-800 pt-4">
+              <div className="flex justify-end gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-900 hover:text-white"
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white"
                 >
                   Hủy bỏ
                 </button>
