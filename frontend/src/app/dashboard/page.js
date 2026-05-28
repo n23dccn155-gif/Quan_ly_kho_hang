@@ -82,8 +82,8 @@ export default function DashboardPage() {
         slow_moving: alertData.slow_moving || [],
       });
 
-      setRecentImports((impRes.data || []).slice(0, 5));
-      setRecentExports((expRes.data || []).slice(0, 5));
+      setRecentImports((impRes.data?.data || []).slice(0, 5));
+      setRecentExports((expRes.data?.data || []).slice(0, 5));
       setChartData(statsRes.data || { stats_7days: [], category_stock: [] });
     } catch (err) {
       console.error('Failed to fetch dashboard metrics:', err);
