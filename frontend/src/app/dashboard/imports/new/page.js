@@ -20,29 +20,20 @@ const blankDetail = () => ({
   unit: '',
   quantity: '',
   unit_price: '',
-  batch_code: '',
-  expiry_date: '',
-  mfg_date: '',
-  location_id: '',
 });
 
 // ─── Product Search Dropdown ──────────────────────────────────
-function ProductSearch({ value, onSelect }) {
-  const { token } = useAuthStore();
-  const [query, setQuery]     = useState(value?.name || '');
+function ProductSearch({ onSelect, supplierId }) {
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [open, setOpen]       = useState(false);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (value?.name) setQuery(value.name);
-  }, [value]);
 
   const search = async (q) => {
     setQuery(q);
     setLoading(true);
     try {
-      const res = await api.get(`/products?search=${encodeURIComponent(q)}&limit=8`);
+      const res = await api.get(`/products?search=${encodeURIComponent(q)}&limit=100${supplierId ? `&supplier_id=${supplierId}` : ''}`);
       const data = res.data;
       const list = Array.isArray(data) ? data : (data.data || []);
       setResults(list);
@@ -64,7 +55,7 @@ function ProductSearch({ value, onSelect }) {
         />
       </div>
       {open && results.length > 0 && (
-        <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+        <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto max-h-60">
           {results.map((p) => (
             <button
               key={p.id}
@@ -175,10 +166,6 @@ export default function NewImportPage() {
           product_id: d.product_id,
           quantity: parseInt(d.quantity),
           unit_price: parseFloat(d.unit_price) || 0,
-          batch_code: d.batch_code || null,
-          expiry_date: d.expiry_date || null,
-          mfg_date: d.mfg_date || null,
-          location_id: d.location_id ? parseInt(d.location_id) : null,
         })),
       });
 
@@ -372,11 +359,14 @@ export default function NewImportPage() {
                       Sản phẩm <span className="text-red-400">*</span>
                     </label>
                     <ProductSearch
-                      value={{ name: row.product_name }}
+                      supplierId={supplierId}
                       onSelect={(p) => setProduct(row._key, p)}
                     />
+                    {row.product_name && (
+                      <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">{row.product_name}</p>
+                    )}
                     {row.product_code && (
-                      <p className="text-xs text-slate-400 mt-1">{row.product_code} · {row.unit}</p>
+                      <p className="text-xs text-slate-400">{row.product_code} · {row.unit}</p>
                     )}
                   </div>
 
@@ -403,51 +393,6 @@ export default function NewImportPage() {
                         onChange={(e) => updateRow(row._key, 'unit_price', e.target.value)}
                         placeholder="0"
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Batch code */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Mã lô</label>
-                      <input
-                        type="text"
-                        value={row.batch_code}
-                        onChange={(e) => updateRow(row._key, 'batch_code', e.target.value)}
-                        placeholder="VD: LOT-2025-001"
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Location */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Vị trí kho</label>
-                      <select
-                        value={row.location_id}
-                        onChange={(e) => updateRow(row._key, 'location_id', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">-- Chọn vị trí --</option>
-                        {locations.map((l) => (
-                          <option key={l.id} value={l.id}>{l.location_code} - {l.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* MFG date */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Ngày sản xuất</label>
-                      <input
-                        type="date"
-                        value={row.mfg_date}
-                        onChange={(e) => updateRow(row._key, 'mfg_date', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Expiry date */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Hạn sử dụng</label>
-                      <input
-                        type="date"
-                        value={row.expiry_date}
-                        onChange={(e) => updateRow(row._key, 'expiry_date', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
