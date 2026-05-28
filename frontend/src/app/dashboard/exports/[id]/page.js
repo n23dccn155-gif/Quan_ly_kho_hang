@@ -8,7 +8,7 @@ import {
   ArrowUpFromLine, ArrowLeft, CheckCircle2,
   XCircle, Clock, AlertCircle, Building2,
   Calendar, User, FileText, ShoppingCart, Share2, PackageOpen, CornerUpLeft,
-  MapPin, Hash, DollarSign, Loader2
+  MapPin, Hash, DollarSign, Loader2, Printer
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -155,7 +155,7 @@ export default function ExportDetailPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div className="flex items-center gap-4">
           <Link
             href="/dashboard/exports"
@@ -174,14 +174,35 @@ export default function ExportDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            In phiếu / Lưu PDF
+          </button>
           <ReasonBadge reason={receipt.reason} />
           <StatusBadge status={receipt.status} />
         </div>
       </div>
 
+      {/* ── Print Header (Only visible when printing) ─────────── */}
+      <div className="hidden print:block mb-8 border-b-2 border-slate-900 pb-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold uppercase">Phiếu Xuất Kho</h1>
+            <p className="text-sm mt-1">Mã phiếu: <strong>{receipt.receipt_code}</strong></p>
+          </div>
+          <div className="text-right">
+            <h2 className="text-xl font-bold">HỆ THỐNG QUẢN LÝ KHO</h2>
+            <p className="text-sm mt-1">Ngày in: {new Date().toLocaleDateString('vi-VN')}</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Error ───────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2 print:hidden">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -189,7 +210,7 @@ export default function ExportDetailPage() {
 
       {/* ── Action Buttons ──────────────────────────────────────── */}
       {receipt.status !== 'CANCELLED' && (
-        <div className="flex gap-3">
+        <div className="flex gap-3 print:hidden">
           {receipt.status === 'PENDING_APPROVAL' && user?.role === 'admin' && (
             <>
               <button

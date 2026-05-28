@@ -8,8 +8,9 @@ import {
   ArrowUpFromLine, Plus, Search, Filter, RefreshCw,
   Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown,
   ShoppingCart, CornerUpLeft, PackageOpen, Share2, AlertCircle,
-  CheckCircle2, XCircle, Clock
+  CheckCircle2, XCircle, Clock, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 import api from '@/lib/api';
 // ─── Status & Reason config ───────────────────────────────────
@@ -79,6 +80,7 @@ export default function ExportsPage() {
 
   // Suggestions state
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const searchContainerRef = useRef(null);
 
   useEffect(() => {
@@ -91,23 +93,38 @@ export default function ExportsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getSuggestions = () => {
-    if (!search.trim()) return [];
-    const term = search.toLowerCase();
-    const matches = new Set();
-    receipts.forEach(r => {
-      if (r.receipt_code?.toLowerCase().includes(term)) matches.add(r.receipt_code);
-      const targetName = r.reason === 'SELL' ? r.customer_name : r.supplier_name;
-      if (targetName?.toLowerCase().includes(term)) matches.add(targetName);
-      if (r.product_names && Array.isArray(r.product_names)) {
-        r.product_names.forEach(p => {
-          if (p?.toLowerCase().includes(term)) matches.add(p);
-        });
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!search.trim()) {
+        setSuggestions([]);
+        return;
       }
-    });
-    return Array.from(matches).slice(0, 6);
-  };
-  const suggestions = getSuggestions();
+      try {
+        const res = await api.get(`/exports?search=${encodeURIComponent(search)}&limit=10`);
+        const items = res.data.data || [];
+        const term = search.toLowerCase();
+        const matches = new Set();
+        
+        items.forEach(r => {
+          if (r.receipt_code?.toLowerCase().includes(term)) matches.add(r.receipt_code);
+          const targetName = r.reason === 'SELL' ? r.customer_name : r.supplier_name;
+          if (targetName?.toLowerCase().includes(term)) matches.add(targetName);
+          if (r.product_names && Array.isArray(r.product_names)) {
+            r.product_names.forEach(p => {
+              if (p?.toLowerCase().includes(term)) matches.add(p);
+            });
+          }
+        });
+        setSuggestions(Array.from(matches).slice(0, 6));
+      } catch (e) {}
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
 
   // Stats
   const [stats, setStats] = useState(null);
@@ -168,6 +185,25 @@ export default function ExportsPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    if (receipts.length === 0) return;
+    const data = receipts.map((r, i) => ({
+      'STT': i + 1,
+      'Mã phiếu': r.receipt_code,
+      'Loại xuất': r.reason === 'SELL' ? 'Xuất bán' : r.reason === 'RETURN' ? 'Trả NCC' : r.reason === 'INTERNAL' ? 'Nội bộ' : 'Huỷ',
+      'Đối tác': r.reason === 'SELL' ? (r.customer_name || 'Khách lẻ') : (r.supplier_name || '—'),
+      'Ngày xuất': r.export_date,
+      'Tổng tiền (VNĐ)': r.total_amount,
+      'Trạng thái': STATUS_MAP[r.status]?.label || r.status,
+      'Ghi chú': r.note || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "PhieuXuatKho");
+    XLSX.writeFile(workbook, `Danh_Sach_Phieu_Xuat_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Page Header ────────────────────────────────────── */}
@@ -183,13 +219,22 @@ export default function ExportsPage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/dashboard/exports/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 active:bg-indigo-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Tạo phiếu xuất
-        </Link>
+        <div className="flex gap-3">
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-500 active:bg-emerald-700 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Xuất Excel
+          </button>
+          <Link
+            href="/dashboard/exports/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 active:bg-indigo-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo phiếu xuất
+          </Link>
+        </div>
       </div>
 
       {/* ── Stats Cards ─────────────────────────────────────── */}

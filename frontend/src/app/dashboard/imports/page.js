@@ -61,6 +61,7 @@ export default function ImportsPage() {
 
   // Suggestions state
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const searchContainerRef = useRef(null);
 
   useEffect(() => {
@@ -73,22 +74,38 @@ export default function ImportsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getSuggestions = () => {
-    if (!search.trim()) return [];
-    const term = search.toLowerCase();
-    const matches = new Set();
-    receipts.forEach(r => {
-      if (r.receipt_code?.toLowerCase().includes(term)) matches.add(r.receipt_code);
-      if (r.supplier_name?.toLowerCase().includes(term)) matches.add(r.supplier_name);
-      if (r.product_names && Array.isArray(r.product_names)) {
-        r.product_names.forEach(p => {
-          if (p?.toLowerCase().includes(term)) matches.add(p);
-        });
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!search.trim()) {
+        setSuggestions([]);
+        return;
       }
-    });
-    return Array.from(matches).slice(0, 6);
-  };
-  const suggestions = getSuggestions();
+      try {
+        const res = await api.get(`/imports?search=${encodeURIComponent(search)}&limit=10`);
+        const items = res.data.data || [];
+        const term = search.toLowerCase();
+        const matches = new Set();
+        
+        items.forEach(r => {
+          if (r.receipt_code?.toLowerCase().includes(term)) matches.add(r.receipt_code);
+          const targetName = r.supplier_name;
+          if (targetName?.toLowerCase().includes(term)) matches.add(targetName);
+          if (r.product_names && Array.isArray(r.product_names)) {
+            r.product_names.forEach(p => {
+              if (p?.toLowerCase().includes(term)) matches.add(p);
+            });
+          }
+        });
+        setSuggestions(Array.from(matches).slice(0, 6));
+      } catch (e) {}
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
 
   // Stats
   const [stats, setStats] = useState(null);
