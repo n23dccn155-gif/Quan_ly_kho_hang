@@ -33,7 +33,14 @@ app.get('/api/health', async (req, res) => {
 
 // Register routes
 const authRoutes = require('./routes/authRoutes');
+const productRoutes = require('./routes/productRoutes');
+const locationRoutes = require('./routes/locationRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/suppliers', supplierRoutes);
 
 // Root route
 app.get('/', (req, res) => {
