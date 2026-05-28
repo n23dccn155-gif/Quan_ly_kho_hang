@@ -89,6 +89,16 @@ export default function DashboardLayout({ children }) {
       href: '/dashboard/suppliers',
       icon: MapPin,
     },
+    {
+      name: 'Phiếu nhập kho',
+      href: '/dashboard/imports',
+      icon: ClipboardList,
+    },
+    {
+      name: 'Phiếu xuất kho',
+      href: '/dashboard/exports',
+      icon: TrendingUp,
+    },
   ];
 
   if (user?.role === 'admin') {
