@@ -47,7 +47,7 @@ if (typeof window !== 'undefined') {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background-color: #7c3aed;
+        background-color: #4f46e5;
         color: #ffffff;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.08);
         border: 2px solid #ffffff;
@@ -246,7 +246,7 @@ export default function SupplierMap({
         {activeRoute.length > 0 && (
           <Polyline 
             positions={activeRoute} 
-            color="#8b5cf6" 
+            color="#4f46e5" 
             weight={4}
             opacity={0.8}
             dashArray="1, 8"
@@ -273,7 +273,7 @@ export default function SupplierMap({
 
       {mode === 'select' && (
         <div className="absolute bottom-4 left-4 z-[400] rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 text-xs text-slate-600 dark:text-slate-300 max-w-[240px] shadow-lg">
-          <p className="font-semibold text-violet-600 dark:text-violet-400 mb-1">📍 Cách ghim tọa độ:</p>
+          <p className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1">📍 Cách ghim tọa độ:</p>
           <p className="text-slate-500 dark:text-slate-400 leading-4">
             Click vào bản đồ hoặc điền địa chỉ rồi bấm <b>"Định vị"</b>. Tuyến đường thực tế và khoảng cách đường đi (km) sẽ được tính toán qua OSRM.
           </p>

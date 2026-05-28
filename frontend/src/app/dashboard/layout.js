@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-violet-500 border-t-transparent"></div>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
           <p className="text-sm font-medium tracking-wide text-slate-400">Đang xác thực quyền truy cập...</p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function DashboardLayout({ children }) {
         <div className="space-y-6">
           {/* Logo Brand */}
           <div className="flex items-center gap-2.5 px-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600 shadow-md">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 shadow-md">
               <Warehouse className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -107,7 +107,7 @@ export default function DashboardLayout({ children }) {
                   href={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? 'bg-violet-600/10 text-violet-600 dark:text-violet-400 border border-violet-500/20'
+                      ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{user?.full_name}</p>
               <span className={`inline-block text-[9px] font-bold uppercase tracking-wider ${
-                user?.role === 'admin' ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'
+                user?.role === 'admin' ? 'text-indigo-600 dark:text-indigo-400' : 'text-blue-600 dark:text-blue-400'
               }`}>
                 {user?.role}
               </span>
@@ -151,7 +151,7 @@ export default function DashboardLayout({ children }) {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 px-1">
-                  <Warehouse className="h-5 w-5 text-violet-500" />
+                  <Warehouse className="h-5 w-5 text-indigo-500" />
                   <span className="font-bold text-slate-900 dark:text-white text-sm">WMS KHO HÀNG</span>
                 </div>
                 <button
@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }) {
                       onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-violet-600/10 text-violet-600 dark:text-violet-400 border border-violet-500/20'
+                          ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
