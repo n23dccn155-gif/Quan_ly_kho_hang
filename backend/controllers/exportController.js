@@ -49,6 +49,7 @@ exports.getAll = async (req, res) => {
         { receipt_code: { contains: search, mode: 'insensitive' } },
         { customer_name: { contains: search, mode: 'insensitive' } },
         { supplier: { name: { contains: search, mode: 'insensitive' } } },
+        { details: { some: { product: { name: { contains: search, mode: 'insensitive' } } } } },
       ];
     }
     if (status) where.status = status;
