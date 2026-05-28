@@ -226,8 +226,6 @@ export default function ImportDetailPage() {
         </div>
       )}
 
-      )}
-
       <div ref={printRef} className="print-content space-y-6 print:bg-white print:text-black">
         {/* Printable Header inside PDF (only visible when printing or in PDF) */}
         <div className="hidden print:block mb-8 border-b pb-4">
