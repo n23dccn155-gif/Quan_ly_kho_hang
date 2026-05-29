@@ -6,6 +6,8 @@ const { authenticateToken } = require('../middlewares/auth');
 router.use(authenticateToken);
 
 router.get('/', inventoryController.getInventory);
+router.get('/next-import-code', inventoryController.getNextImportCode);
+router.get('/next-export-code', inventoryController.getNextExportCode);
 router.get('/dashboard', inventoryController.getDashboard);
 router.get('/alerts', inventoryController.getAlerts);
 router.get('/stats', inventoryController.getStats);

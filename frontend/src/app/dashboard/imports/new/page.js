@@ -1,638 +1,584 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuthStore } from '@/store/useAuthStore';
 import {
-  ArrowDownToLine, ArrowLeft, Plus, Trash2, Save,
-  Package, Building2, Calendar, FileText, AlertCircle,
-  Search, ChevronDown, X
+  Building2,
+  Plus,
+  Save,
+  Scale,
+  Trash2,
+  Truck,
+  X,
+  AlertCircle,
 } from 'lucide-react';
-
 import api from '@/lib/api';
-// ─── Blank detail row ─────────────────────────────────────────
-const blankDetail = () => ({
+
+const today = () => new Date().toISOString().split('T')[0];
+
+const blankItem = () => ({
   _key: Math.random(),
-  category: '',
-  product_id: '',
-  product_name: '',
-  product_code: '',
-  unit: '',
+  productId: '',
+  productName: '',
   quantity: '',
-  unit_price: '',
-  mfg_date: '',
-  expiry_date: '',
-  location_id: '',
+  price: '',
+  totalAmount: 0,
+  isNewProduct: true,
+  category: '',
 });
 
-// ─── Product Search Dropdown ──────────────────────────────────
-function ProductSearch({ onSelect, onClear, supplierId, category }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
 
-  // Clear results if dependencies change so it refetches
-  useEffect(() => {
-    setResults([]);
-  }, [supplierId, category]);
+const calculateDeliveryDays = (distance) => {
+  if (distance === null || distance === undefined || distance === '') return 2;
+  const km = Number(distance);
+  if (km <= 20) return 1;
+  if (km <= 100) return 2;
+  if (km <= 300) return 3;
+  return 5;
+};
 
-  const search = async (q) => {
-    setQuery(q);
-    setLoading(true);
-    try {
-      let url = `/products?search=${encodeURIComponent(q)}&limit=100`;
-      if (supplierId) url += `&supplier_id=${supplierId}`;
-      if (category) url += `&category=${encodeURIComponent(category)}`;
-      const res = await api.get(url);
-      const data = res.data;
-      const list = Array.isArray(data) ? data : (data.data || []);
-      setResults(list);
-      setOpen(true);
-    } catch (_) {}
-    setLoading(false);
-  };
+const getArrivalDate = (dateValue, days) => {
+  if (!dateValue) return '';
+  const next = new Date(dateValue);
+  next.setDate(next.getDate() + Number(days || 0));
+  return next.toISOString().split('T')[0];
+};
 
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-        <input
-          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="Tìm sản phẩm..."
-          value={query}
-          onChange={(e) => {
-            const val = e.target.value;
-            search(val);
-            if (val === '' && onClear) onClear();
-          }}
-          onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
-          onBlur={() => setTimeout(() => setOpen(false), 200)}
-        />
-      </div>
-      {open && results.length > 0 && (
-        <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto max-h-60">
-          {results.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onMouseDown={() => {
-                onSelect(p);
-                setQuery(p.name);
-                setOpen(false);
-              }}
-              className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
-            >
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-200">{p.name}</p>
-                <p className="text-xs text-slate-400">{p.product_code} · {p.unit}</p>
-              </div>
-              <span className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Chọn</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Supplier Search Dropdown ─────────────────────────────────
-function SupplierSearch({ onSelect, onClear, productIds, initialSupplierName }) {
-  const [query, setQuery] = useState(initialSupplierName || '');
-  const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (initialSupplierName) setQuery(initialSupplierName);
-  }, [initialSupplierName]);
-
-  // Clear results if product dependencies change so it refetches
-  useEffect(() => {
-    setResults([]);
-  }, [productIds.join(',')]);
-
-  const search = async (q) => {
-    setQuery(q);
-    setLoading(true);
-    try {
-      const pIds = productIds.join(',');
-      const res = await api.get(`/suppliers?search=${encodeURIComponent(q)}&limit=100${pIds ? `&product_ids=${pIds}` : ''}`);
-      const data = res.data;
-      const list = Array.isArray(data) ? data : (data.data || []);
-      setResults(list);
-      setOpen(true);
-    } catch (_) {}
-    setLoading(false);
-  };
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-        <input
-          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium"
-          placeholder="Tìm hoặc nhập tên nhà cung cấp..."
-          value={query}
-          onChange={(e) => {
-            const val = e.target.value;
-            search(val);
-            if (val === '' && onClear) onClear();
-          }}
-          onFocus={() => { if (results.length === 0) search(''); else setOpen(true); }}
-          onBlur={() => setTimeout(() => setOpen(false), 200)}
-        />
-      </div>
-      {open && results.length > 0 && (
-        <div className="absolute z-40 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto max-h-60">
-          {results.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onMouseDown={() => {
-                onSelect(s);
-                setQuery(s.name);
-                setOpen(false);
-              }}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0"
-            >
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-200">{s.name}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{s.phone} · {s.contact_person}</p>
-              </div>
-              <span className="text-xs text-indigo-500 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-950/30 px-2 py-1 rounded">Chọn</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────
 export default function NewImportPage() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
-
-  const [suppliers, setSuppliers]   = useState([]);
-  const [locations, setLocations]   = useState([]);
-  const [loading, setLoading]       = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [receiptCode, setReceiptCode] = useState('');
+  const [importDate, setImportDate] = useState(today());
+  const [supplierId, setSupplierId] = useState('');
+  const [note, setNote] = useState('');
+  const [items, setItems] = useState([blankItem()]);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState('');
 
-  // Form fields
-  const [supplierId, setSupplierId]           = useState('');
-  const [supplierName, setSupplierName]       = useState('');
-  const [importDate, setImportDate]           = useState(new Date().toISOString().split('T')[0]);
-  const [note, setNote]                       = useState('');
-  const [transportNote, setTransportNote]     = useState('');
-  const [estDays, setEstDays]                 = useState('');
-  const [details, setDetails]                 = useState([blankDetail()]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [compareProductId, setCompareProductId] = useState('');
+  const [compareData, setCompareData] = useState([]);
+  const [isComparing, setIsComparing] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [codeRes, productRes, supplierRes, locationRes] = await Promise.all([
+          api.get('/inventory/next-import-code'),
+          api.get('/products?limit=500'),
+          api.get('/suppliers?limit=500'),
+          api.get('/locations'),
+        ]);
+
+        setReceiptCode(codeRes.data?.receipt_code || '');
+        const products = Array.isArray(productRes.data) ? productRes.data : productRes.data?.data || [];
+        setAllProducts(products);
+        setProductOptions(products);
+        setSuppliers(Array.isArray(supplierRes.data) ? supplierRes.data : supplierRes.data?.data || []);
+        setLocations(Array.isArray(locationRes.data) ? locationRes.data : locationRes.data?.data || []);
+      } catch (err) {
+        setError(err.response?.data?.error || err.response?.data?.message || 'Không thể tải dữ liệu tạo phiếu nhập.');
+      }
+    };
+
+    load();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('draft') !== 'replenishment') return;
+    if (params.get('draft') !== 'replenishment' || allProducts.length === 0) return;
 
     try {
       const rawDraft = localStorage.getItem('replenishmentDraft');
       if (!rawDraft) return;
 
       const draft = JSON.parse(rawDraft);
-      setSupplierId(String(draft.supplierId || ''));
-      setSupplierName(draft.supplierName || '');
+      const nextSupplierId = String(draft.supplierId || '');
+      setSupplierId(nextSupplierId);
       setNote(draft.note || '');
-      setEstDays(draft.estimatedDeliveryDays ? String(draft.estimatedDeliveryDays) : '');
-      setDetails((draft.items || []).map((item) => ({
-        _key: Math.random(),
-        category: item.category || '',
-        product_id: item.product_id || '',
-        product_name: item.product_name || '',
-        product_code: item.product_code || '',
-        unit: item.unit || '',
-        quantity: item.quantity ? String(item.quantity) : '',
-        unit_price: item.unit_price ? String(item.unit_price) : '',
-        mfg_date: '',
-        expiry_date: '',
-        location_id: '',
-      })));
+
+      const filtered = nextSupplierId
+        ? allProducts.filter((p) => (p.supplier_ids || []).includes(Number(nextSupplierId)))
+        : allProducts;
+      setProductOptions(filtered.length ? filtered : allProducts);
+
+      const draftItems = (draft.items || []).map((draftItem) => {
+        const product = allProducts.find((p) => String(p.id) === String(draftItem.productId || draftItem.product_id));
+        const supplierPrice = (product?.supplier_prices || []).find((sp) => Number(sp.supplier_id) === Number(nextSupplierId));
+        const quantity = draftItem.quantity ? String(draftItem.quantity) : '';
+        const price = Number(draftItem.price ?? draftItem.unit_price ?? supplierPrice?.contract_price ?? product?.unit_price ?? 0);
+
+        return {
+          _key: Math.random(),
+          productId: product?.id || draftItem.productId || draftItem.product_id || '',
+          productName: product?.name || draftItem.productName || draftItem.product_name || '',
+          quantity,
+          price: price ? String(price) : '',
+          totalAmount: (Number(quantity) || 0) * price,
+          isNewProduct: !product,
+          category: product?.category || draftItem.category || '',
+        };
+      });
+
+      if (draftItems.length) setItems(draftItems);
       localStorage.removeItem('replenishmentDraft');
-    } catch (error) {
-      console.error('Failed to read replenishment draft:', error);
+    } catch (err) {
+      console.error('Failed to read replenishment draft:', err);
     }
-  }, []);
+  }, [allProducts]);
 
-  // ── Load suppliers & locations ──────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [sRes, lRes] = await Promise.all([
-          api.get(`/suppliers?limit=200`),
-          api.get(`/locations`),
-        ]);
-        const sd = sRes.data;
-        setSuppliers(Array.isArray(sd) ? sd : (sd.data || []));
-        const ld = lRes.data;
-        setLocations(Array.isArray(ld) ? ld : (ld.data || []));
-      } catch (_) {}
-      setLoading(false);
-    };
-    load();
-  }, [token]);
+  const selectedSupplier = suppliers.find((s) => String(s.id) === String(supplierId));
+  const deliveryDays = calculateDeliveryDays(selectedSupplier?.distance_km);
+  const estimatedArrival = getArrivalDate(importDate, deliveryDays);
 
-  // ── Detail row helpers ──────────────────────────────────────
-  const addRow   = () => setDetails((d) => [...d, blankDetail()]);
-  const removeRow = (key) => setDetails((d) => d.filter((r) => r._key !== key));
-  const updateRow = (key, field, val) =>
-    setDetails((d) => d.map((r) => (r._key === key ? { ...r, [field]: val } : r)));
-  const setProduct = (key, product) => {
-    setDetails((d) =>
-      d.map((r) =>
-        r._key === key
-          ? {
-              ...r,
-              product_id: product.id,
-              product_name: product.name,
-              product_code: product.product_code,
-              unit: product.unit || '',
-              unit_price: product.unit_price ? String(product.unit_price) : '',
-            }
-          : r
-      )
-    );
-    if (!supplierId && product.supplier_ids && product.supplier_ids.length > 0) {
-      setSupplierId(String(product.supplier_ids[0]));
+  const selectedProductIds = items.map((item) => item.productId).filter(Boolean);
+
+  const zoneFreeCapacity = useMemo(() => {
+    return locations.reduce((acc, loc) => {
+      const free = Number(loc.max_capacity || 0) - Number(loc.current_occupied || 0);
+      acc[loc.zone] = (acc[loc.zone] || 0) + Math.max(0, free);
+      return acc;
+    }, {});
+  }, [locations]);
+
+  const formTotalByCategory = (category) =>
+    items.reduce((sum, item) => {
+      if (item.category !== category) return sum;
+      return sum + (parseInt(item.quantity, 10) || 0);
+    }, 0);
+
+  const resetItems = () => setItems([blankItem()]);
+
+  const handleSupplierChange = (value) => {
+    setSupplierId(value);
+    const nextSupplierId = Number(value);
+    const filtered = value
+      ? allProducts.filter((p) => (p.supplier_ids || []).includes(nextSupplierId))
+      : allProducts;
+    setProductOptions(filtered);
+    resetItems();
+  };
+
+  const updateItem = (index, field, value) => {
+    setItems((prev) => {
+      const next = [...prev];
+      const row = { ...next[index], [field]: value };
+
+      if (field === 'productId') {
+        const product = productOptions.find(
+          (p) =>
+            String(p.id) === String(value) ||
+            String(p.product_code || '').toLowerCase() === String(value).toLowerCase() ||
+            String(p.name || '').toLowerCase() === String(value).toLowerCase()
+        );
+
+        if (product) {
+          const supplierPrice = (product.supplier_prices || []).find((sp) => Number(sp.supplier_id) === Number(supplierId));
+          const price = Number(supplierPrice?.contract_price ?? product.unit_price ?? 0);
+          row.productId = product.id;
+          row.productName = product.name;
+          row.category = product.category || '';
+          row.price = price ? String(price) : '';
+          row.isNewProduct = false;
+          row.totalAmount = (parseInt(row.quantity, 10) || 0) * price;
+        } else {
+          row.productName = '';
+          row.category = '';
+          row.price = '';
+          row.totalAmount = 0;
+          row.isNewProduct = true;
+        }
+      }
+
+      if (field === 'quantity') {
+        row.totalAmount = (parseInt(value, 10) || 0) * (Number(row.price) || 0);
+      }
+
+      next[index] = row;
+      return next;
+    });
+  };
+
+  const addRow = () => setItems((prev) => [...prev, blankItem()]);
+  const removeRow = (key) => setItems((prev) => (prev.length === 1 ? prev : prev.filter((row) => row._key !== key)));
+
+  const openCompare = () => {
+    setCompareProductId('');
+    setCompareData([]);
+    setIsCompareOpen(true);
+  };
+
+  const fetchCompare = async (productId) => {
+    setCompareProductId(productId);
+    setCompareData([]);
+    if (!productId) return;
+
+    setIsComparing(true);
+    try {
+      const res = await api.get(`/products/${productId}/suppliers`);
+      setCompareData(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Không thể tải dữ liệu so sánh nhà cung cấp.');
+    } finally {
+      setIsComparing(false);
     }
   };
 
-  // ── Computed total ──────────────────────────────────────────
-  const totalAmount = details.reduce(
-    (s, d) => s + (parseFloat(d.unit_price) || 0) * (parseInt(d.quantity) || 0),
-    0
-  );
+  const chooseCompareSupplier = (nextSupplierId) => {
+    handleSupplierChange(String(nextSupplierId));
+    setIsCompareOpen(false);
+  };
 
-  // ── Submit ──────────────────────────────────────────────────
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
 
-    if (!supplierId) { setError('Vui lòng chọn nhà cung cấp.'); return; }
-    const validDetails = details.filter((d) => d.product_id && d.quantity);
-    if (validDetails.length === 0) { setError('Phải có ít nhất 1 sản phẩm hợp lệ.'); return; }
+    if (!supplierId) {
+      setError('Vui lòng chọn nhà cung cấp.');
+      return;
+    }
+
+    const validItems = items.filter((item) => item.productId && parseInt(item.quantity, 10) > 0);
+    if (validItems.length === 0) {
+      setError('Phiếu nhập phải có ít nhất một sản phẩm hợp lệ.');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const res = await api.post(`/imports`, {
-        supplier_id: parseInt(supplierId),
+      const res = await api.post('/imports', {
+        supplier_id: parseInt(supplierId, 10),
         import_date: importDate,
         note,
-        transport_note: transportNote,
-        estimated_delivery_days: estDays ? parseInt(estDays) : undefined,
-        details: validDetails.map((d) => ({
-          product_id: d.product_id,
-          quantity: parseInt(d.quantity),
-          unit_price: parseFloat(d.unit_price) || 0,
-          mfg_date: d.mfg_date || null,
-          expiry_date: d.expiry_date || null,
-          location_id: d.location_id ? parseInt(d.location_id) : null,
+        estimated_delivery_days: deliveryDays,
+        details: validItems.map((item) => ({
+          product_id: parseInt(item.productId, 10),
+          quantity: parseInt(item.quantity, 10),
+          unit_price: Number(item.price) || 0,
         })),
       });
 
-      const created = res.data;
-      router.push(`/dashboard/imports/${created.id}`);
+      router.push(`/dashboard/imports/${res.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Lỗi khi tạo phiếu nhập.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/dashboard/imports"
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-600/30">
-            <ArrowDownToLine className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Tạo phiếu nhập kho</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Điền thông tin và danh sách sản phẩm</p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-50">Tạo phiếu nhập kho</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Nhập thông tin phiếu và danh sách sản phẩm cần nhập vào các phân khu kệ hàng phù hợp
+        </p>
       </div>
 
-      {/* ── Error Banner ────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-medium text-red-600 dark:text-red-300">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ── LEFT: General Info ────────────────────────────────── */}
-        <div className="lg:col-span-1 space-y-5">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4">
-            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-indigo-400" />
-              Thông tin chung
-            </h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <section className="grid grid-cols-1 gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:grid-cols-2">
+          <label className="space-y-1">
+            <span className="ml-1 text-xs font-bold uppercase text-slate-500">Mã phiếu nhập</span>
+            <input
+              readOnly
+              value={receiptCode}
+              placeholder="Đang tải mã phiếu..."
+              className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-600 shadow-inner outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            />
+          </label>
 
-            {/* Supplier */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                Nhà cung cấp <span className="text-red-400">*</span>
-              </label>
-              <SupplierSearch
-                productIds={details.map(d => d.product_id).filter(Boolean)}
-                initialSupplierName={supplierName}
-                onSelect={(s) => {
-                  setSupplierId(s.id);
-                  setSupplierName(s.name);
-                }}
-                onClear={() => {
-                  setSupplierId('');
-                  setSupplierName('');
-                }}
-              />
-            </div>
+          <label className="space-y-1">
+            <span className="ml-1 text-xs font-bold uppercase text-slate-500">Ngày nhập</span>
+            <input
+              type="date"
+              required
+              value={importDate}
+              onChange={(event) => setImportDate(event.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-950"
+            />
+          </label>
 
-            {/* Import Date */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                Ngày nhập <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="date"
-                value={importDate}
-                onChange={(e) => setImportDate(e.target.value)}
-                required
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Estimated delivery days */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                Thời gian vận chuyển (ngày)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={estDays}
-                onChange={(e) => setEstDays(e.target.value)}
-                placeholder="VD: 3"
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Transport note */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                Ghi chú vận chuyển
-              </label>
-              <textarea
-                rows={2}
-                value={transportNote}
-                onChange={(e) => setTransportNote(e.target.value)}
-                placeholder="Thông tin xe, đơn vị vận chuyển..."
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              />
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                Ghi chú phiếu nhập
-              </label>
-              <textarea
-                rows={2}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ghi chú thêm..."
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              />
-            </div>
-          </div>
-
-          {/* ── Summary Card ──────────────────────────────────────── */}
-          <div className="rounded-xl border border-indigo-500/30 bg-indigo-600/5 p-5 space-y-3">
-            <h2 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Tóm tắt</h2>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400">Số dòng sản phẩm</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{details.filter(d => d.product_id).length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400">Tổng số lượng</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {details.reduce((s, d) => s + (parseInt(d.quantity) || 0), 0)}
-              </span>
-            </div>
-            <div className="border-t border-indigo-500/20 pt-3 flex justify-between">
-              <span className="font-semibold text-slate-600 dark:text-slate-300">Tổng tiền</span>
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── RIGHT: Product Details Table ──────────────────────── */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Package className="h-4 w-4 text-indigo-400" />
-                Danh sách sản phẩm
-              </h2>
-              <button
-                type="button"
-                onClick={addRow}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Thêm sản phẩm
+          <div className="space-y-1">
+            <div className="ml-1 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase text-slate-500">Nhà cung cấp</span>
+              <button type="button" onClick={openCompare} className="flex items-center gap-1 text-xs font-semibold text-cyan-600 hover:text-cyan-700">
+                <Scale className="h-3.5 w-3.5" />
+                So sánh NCC
               </button>
             </div>
-
-            <div className="p-4 space-y-4">
-              {details.map((row, idx) => (
-                <div
-                  key={row._key}
-                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      Sản phẩm #{idx + 1}
-                    </span>
-                    {details.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRow(row._key)}
-                        className="rounded-lg p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Category and Product search */}
-                  <div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                          Phân mục
-                        </label>
-                        <select
-                          value={row.category || ''}
-                          onChange={(e) => updateRow(row._key, 'category', e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Tất cả phân mục...</option>
-                          <option value="Thực phẩm tươi sống">Thực phẩm tươi sống</option>
-                          <option value="Thực phẩm khô và Nhu yếu phẩm">Thực phẩm khô và Nhu yếu phẩm</option>
-                          <option value="Đồ uống và bánh kẹo">Đồ uống và bánh kẹo</option>
-                          <option value="Hóa mỹ phẩm">Hóa mỹ phẩm</option>
-                          <option value="Đồ dùng gia đình">Đồ dùng gia đình</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                          Sản phẩm <span className="text-red-400">*</span>
-                        </label>
-                        <ProductSearch
-                          supplierId={supplierId}
-                          category={row.category}
-                          onSelect={(p) => setProduct(row._key, p)}
-                          onClear={() => setProduct(row._key, { id: '', name: '', product_code: '', unit: '', unit_price: '' })}
-                        />
-                      </div>
-                    </div>
-                    {row.product_name && (
-                      <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">{row.product_name}</p>
-                    )}
-                    {row.product_code && (
-                      <p className="text-xs text-slate-400">{row.product_code} · {row.unit}</p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Quantity */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                        Số lượng <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="number" min="1"
-                        value={row.quantity}
-                        onChange={(e) => updateRow(row._key, 'quantity', e.target.value)}
-                        placeholder="0"
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Unit price */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Đơn giá (VNĐ)</label>
-                      <input
-                        type="number" min="0"
-                        value={row.unit_price}
-                        onChange={(e) => updateRow(row._key, 'unit_price', e.target.value)}
-                        placeholder="0"
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Location */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Vị trí kho</label>
-                      <select
-                        value={row.location_id}
-                        onChange={(e) => updateRow(row._key, 'location_id', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">-- Chọn vị trí --</option>
-                        {locations.map((l) => (
-                          <option key={l.id} value={l.id}>{l.location_code} - {l.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* MFG date */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Ngày sản xuất</label>
-                      <input
-                        type="date"
-                        value={row.mfg_date}
-                        onChange={(e) => updateRow(row._key, 'mfg_date', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    {/* Expiry date */}
-                    <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Hạn sử dụng</label>
-                      <input
-                        type="date"
-                        value={row.expiry_date}
-                        onChange={(e) => updateRow(row._key, 'expiry_date', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row subtotal */}
-                  {row.quantity && row.unit_price && (
-                    <div className="flex justify-end">
-                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                        Thành tiền: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          (parseInt(row.quantity) || 0) * (parseFloat(row.unit_price) || 0)
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </div>
+            <input
+              list="import-supplier-list"
+              required
+              value={supplierId}
+              onChange={(event) => handleSupplierChange(event.target.value)}
+              placeholder="Nhập hoặc chọn mã nhà cung cấp..."
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-950"
+            />
+            <datalist id="import-supplier-list">
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
               ))}
-
-              <button
-                type="button"
-                onClick={addRow}
-                className="w-full rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 py-3 text-sm text-slate-400 hover:border-indigo-400 hover:text-indigo-500 dark:hover:border-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center justify-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Thêm sản phẩm
-              </button>
-            </div>
+            </datalist>
           </div>
 
-          {/* ── Action Buttons ────────────────────────────────────── */}
-          <div className="flex gap-3 justify-end">
-            <Link
-              href="/dashboard/imports"
-              className="rounded-lg border border-slate-200 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              Huỷ
-            </Link>
+          <label className="space-y-1">
+            <span className="ml-1 text-xs font-bold uppercase text-slate-500">Ghi chú</span>
+            <input
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Nhập ghi chú phiếu nhập..."
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-950"
+            />
+          </label>
+
+          {selectedSupplier && (
+            <div className="grid gap-4 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 text-sm text-cyan-900 dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-cyan-100 md:col-span-2 md:grid-cols-2">
+              <div className="flex items-start gap-3">
+                <Building2 className="mt-0.5 h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                <div>
+                  <p className="font-bold">Thông tin nhà cung cấp</p>
+                  <p>Người liên hệ: {selectedSupplier.contact_person || 'Chưa cập nhật'}</p>
+                  <p>SĐT: {selectedSupplier.phone || 'Chưa cập nhật'}</p>
+                  <p>Email: {selectedSupplier.email || 'Chưa cập nhật'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 border-t border-cyan-200 pt-3 dark:border-cyan-900 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                <Truck className="mt-0.5 h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                <div>
+                  <p className="font-bold">Theo dõi vận chuyển dự kiến</p>
+                  <p>Khoảng cách: {selectedSupplier.distance_km != null ? `${selectedSupplier.distance_km} km` : 'Chưa cập nhật'}</p>
+                  <p>Thời gian giao dự kiến: {deliveryDays} ngày</p>
+                  <p>Ngày dự kiến nhận: <span className="font-bold">{estimatedArrival ? new Date(estimatedArrival).toLocaleDateString('vi-VN') : '-'}</span></p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Chi tiết sản phẩm nhập</h2>
+            <button type="button" onClick={addRow} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-cyan-600">
+              <Plus className="h-4 w-4" />
+              Thêm dòng
+            </button>
+          </div>
+
+          <div className="space-y-5">
+            {items.map((item, index) => {
+              const product = productOptions.find((p) => String(p.id) === String(item.productId));
+              const isDuplicated = item.productId && selectedProductIds.filter((id) => String(id) === String(item.productId)).length > 1;
+              const capacityNeeded = formTotalByCategory(item.category);
+              const capacityFree = zoneFreeCapacity[item.category] || 0;
+              const capacityWarning = item.category && capacityNeeded > capacityFree;
+
+              return (
+                <div
+                  key={item._key}
+                  className={`rounded-2xl border p-5 transition ${
+                    isDuplicated || capacityWarning
+                      ? 'border-amber-300 bg-amber-50/40 dark:border-amber-700 dark:bg-amber-950/20'
+                      : 'border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-800/50'
+                  }`}
+                >
+                  <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-5">
+                    <label className="space-y-1">
+                      <span className="ml-1 text-[10px] font-bold uppercase text-slate-500">ID sản phẩm</span>
+                      <input
+                        list={`import-product-list-${index}`}
+                        required
+                        value={item.productId}
+                        onChange={(event) => updateItem(index, 'productId', event.target.value)}
+                        placeholder="Nhập ID..."
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+                      />
+                      <datalist id={`import-product-list-${index}`}>
+                        {productOptions.map((productItem) => (
+                          <option key={productItem.id} value={productItem.id}>
+                            {productItem.id} - {productItem.name}
+                          </option>
+                        ))}
+                      </datalist>
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="ml-1 text-[10px] font-bold uppercase text-slate-500">Tên sản phẩm</span>
+                      <input
+                        readOnly={!item.isNewProduct}
+                        value={item.productName}
+                        onChange={(event) => updateItem(index, 'productName', event.target.value)}
+                        placeholder="Tên sản phẩm"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold outline-none read-only:cursor-not-allowed read-only:bg-slate-100 read-only:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:read-only:bg-slate-800"
+                      />
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="ml-1 text-[10px] font-bold uppercase text-slate-500">Số lượng</span>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={item.quantity}
+                        onChange={(event) => updateItem(index, 'quantity', event.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+                      />
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="ml-1 text-[10px] font-bold uppercase text-slate-500">Đơn giá nhập</span>
+                      <input
+                        readOnly
+                        value={item.price ? formatCurrency(item.price) : '0 đ'}
+                        className="w-full cursor-not-allowed rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-500 outline-none dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="ml-1 text-[10px] font-bold uppercase text-slate-400">Thành tiền</span>
+                      <input
+                        readOnly
+                        value={formatCurrency(item.totalAmount)}
+                        className="w-full cursor-not-allowed rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 font-bold text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-3 space-y-1 text-xs font-medium">
+                    {isDuplicated && <p className="text-amber-600">Cảnh báo: sản phẩm bị lặp, hệ thống sẽ cộng dồn số lượng khi nhập.</p>}
+                    {capacityWarning && (
+                      <p className="text-red-500">
+                        Phân khu "{item.category}" không đủ sức chứa trống. Cần {capacityNeeded}, còn trống {capacityFree}.
+                      </p>
+                    )}
+                    {product && (
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Danh mục: <span className="font-semibold text-slate-700 dark:text-slate-200">{product.category}</span> | Sức chứa trống toàn khu: <span className="font-semibold">{capacityFree}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(item._key)}
+                      disabled={items.length === 1}
+                      className="inline-flex items-center gap-1 rounded-xl border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-red-900 dark:bg-red-950/30"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Xóa dòng
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex justify-end">
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-white shadow-md shadow-emerald-100 transition-all hover:bg-emerald-600 active:scale-95 disabled:opacity-60 dark:shadow-none"
             >
-              {submitting ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              {submitting ? 'Đang tạo...' : 'Tạo phiếu nhập'}
+              <Save className="h-4 w-4" />
+              {submitting ? 'Đang lưu...' : 'Lưu phiếu nhập'}
             </button>
           </div>
+        </section>
+      </form>
+
+      {isCompareOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setIsCompareOpen(false)}>
+          <div className="flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+                <Scale className="h-5 w-5 text-cyan-600" />
+                So sánh nhà cung cấp
+              </h3>
+              <button type="button" onClick={() => setIsCompareOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Chọn sản phẩm cần nhập</span>
+                <select
+                  value={compareProductId}
+                  onChange={(event) => fetchCompare(event.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+                >
+                  <option value="">-- Chọn sản phẩm --</option>
+                  {allProducts
+                    .filter((product) => (product.supplier_prices || []).length >= 2)
+                    .map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.product_code} - {product.name} ({product.supplier_prices.length} NCC)
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              {isComparing ? (
+                <div className="py-8 text-center text-slate-500">Đang tìm kiếm...</div>
+              ) : compareProductId && compareData.length === 0 ? (
+                <div className="rounded-xl border border-slate-100 bg-slate-50 py-8 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-950">
+                  Không có nhà cung cấp nào cho sản phẩm này.
+                </div>
+              ) : compareData.length > 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="p-3 font-semibold text-slate-600">Nhà cung cấp</th>
+                        <th className="p-3 font-semibold text-slate-600">Giá hợp đồng</th>
+                        <th className="p-3 font-semibold text-slate-600">Khoảng cách</th>
+                        <th className="p-3 font-semibold text-slate-600">Giao hàng</th>
+                        <th className="p-3" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {compareData.map((supplier, index) => (
+                        <tr key={supplier.supplier_id} className={index === 0 ? 'bg-emerald-50/70 dark:bg-emerald-950/20' : ''}>
+                          <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">
+                            {supplier.supplier_name}
+                            {index === 0 && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Tốt nhất</span>}
+                          </td>
+                          <td className="p-3 font-semibold text-cyan-700">{formatCurrency(supplier.contract_price)}</td>
+                          <td className="p-3 text-slate-600 dark:text-slate-300">{supplier.distance_km != null ? `${supplier.distance_km} km` : '-'}</td>
+                          <td className="p-3 text-slate-600 dark:text-slate-300">{supplier.lead_time_days || calculateDeliveryDays(supplier.distance_km)} ngày</td>
+                          <td className="p-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => chooseCompareSupplier(supplier.supplier_id)}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                            >
+                              Chọn
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
-    </form>
+      )}
+    </div>
   );
 }

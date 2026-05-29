@@ -2,14 +2,14 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // ────────────────────────────────────────────────────────────
-// Utility: generate receipt code  PX-YYYYMMDD-XXXX
+// Utility: generate receipt code like TTCS: PX + YYMMDD + 3-digit sequence
 // ────────────────────────────────────────────────────────────
 async function generateExportCode() {
   const today = new Date();
-  const y = today.getFullYear();
+  const y = String(today.getFullYear()).slice(-2);
   const m = String(today.getMonth() + 1).padStart(2, '0');
   const d = String(today.getDate()).padStart(2, '0');
-  const prefix = `PX-${y}${m}${d}-`;
+  const prefix = `PX${y}${m}${d}`;
 
   const last = await prisma.exportReceipt.findFirst({
     where: { receipt_code: { startsWith: prefix } },
@@ -18,10 +18,9 @@ async function generateExportCode() {
 
   let seq = 1;
   if (last) {
-    const parts = last.receipt_code.split('-');
-    seq = parseInt(parts[parts.length - 1], 10) + 1;
+    seq = parseInt(last.receipt_code.slice(-3), 10) + 1;
   }
-  return `${prefix}${String(seq).padStart(4, '0')}`;
+  return `${prefix}${String(seq).padStart(3, '0')}`;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -217,12 +216,48 @@ exports.create = async (req, res) => {
         const product_id = parseInt(item.product_id);
         const qty_needed = parseInt(item.quantity);
         const selling_price = parseFloat(item.selling_price) || 0;
+        const requested_lot_id = item.import_detail_id ? parseInt(item.import_detail_id) : null;
 
         if (!product_id || qty_needed <= 0) {
           throw new Error(`Sản phẩm hoặc số lượng không hợp lệ.`);
         }
 
         // ── Allocate lots (FEFO) for ALL reasons ──
+        if (reason === 'RETURN' && requested_lot_id) {
+          const lotRows = await tx.$queryRaw`
+            SELECT vls.lot_id, vls.product_id, vls.supplier_id, vls.available_lot_stock::int,
+                   vls.current_lot_stock::int, vls.batch_code, vls.unit_price::float as unit_price
+            FROM v_lot_stock vls
+            WHERE vls.lot_id = ${requested_lot_id}
+              AND vls.product_id = ${product_id}
+              AND vls.supplier_id = ${parseInt(supplier_id)}
+              AND vls.available_lot_stock > 0
+          `;
+
+          if (!lotRows.length) {
+            throw new Error('Lô hàng đã chọn không còn tồn khả dụng hoặc không thuộc nhà cung cấp này.');
+          }
+
+          const lot = lotRows[0];
+          if (lot.available_lot_stock < qty_needed) {
+            throw new Error(`Lô "${lot.batch_code || requested_lot_id}" chỉ còn ${lot.available_lot_stock}, không đủ để trả ${qty_needed}.`);
+          }
+
+          const returnPrice = Number(lot.unit_price || 0);
+          await tx.exportDetail.create({
+            data: {
+              receipt_id: receipt.id,
+              product_id,
+              import_detail_id: requested_lot_id,
+              quantity: qty_needed,
+              selling_price: returnPrice,
+            },
+          });
+
+          totalAmount += qty_needed * returnPrice;
+          continue;
+        }
+
         let lots;
         if (reason === 'RETURN') {
           lots = await tx.$queryRaw`
@@ -273,16 +308,17 @@ exports.create = async (req, res) => {
             },
           });
 
-          // Update location capacity
-          const lotDetail = await tx.importDetail.findUnique({
-            where: { id: lot.lot_id },
-            select: { location_id: true },
-          });
-          if (lotDetail?.location_id) {
-            await tx.location.update({
-              where: { id: lotDetail.location_id },
-              data: { current_occupied: { decrement: take } },
+          if (reason !== 'RETURN') {
+            const lotDetail = await tx.importDetail.findUnique({
+              where: { id: lot.lot_id },
+              select: { location_id: true },
             });
+            if (lotDetail?.location_id) {
+              await tx.location.update({
+                where: { id: lotDetail.location_id },
+                data: { current_occupied: { decrement: take } },
+              });
+            }
           }
 
           remaining -= take;
