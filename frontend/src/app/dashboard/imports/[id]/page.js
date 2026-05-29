@@ -17,11 +17,16 @@ const STATUS_MAP = {
   IN_TRANSIT:  { label: 'Đang vận chuyển', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30',     icon: Truck,        step: 1 },
   ARRIVED:     { label: 'Đã về kho',        color: 'bg-amber-500/15 text-amber-400 border-amber-500/30',  icon: Package,      step: 2 },
   INSPECTING:  { label: 'Đang kiểm tra',    color: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30', icon: Clock,      step: 3 },
-  COMPLETED:   { label: 'Hoàn tất',         color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', icon: CheckCircle2, step: 4 },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30', icon: Clock, step: 4 },
+  COMPLETED:   { label: 'Hoàn tất',         color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', icon: CheckCircle2, step: 5 },
   CANCELLED:   { label: 'Đã huỷ',           color: 'bg-red-500/15 text-red-400 border-red-500/30',        icon: XCircle,      step: 0 },
 };
 
-const STATUS_FLOW = ['IN_TRANSIT', 'ARRIVED', 'INSPECTING', 'COMPLETED'];
+const STATUS_FLOW = ['IN_TRANSIT', 'ARRIVED', 'INSPECTING', 'PENDING_APPROVAL', 'COMPLETED'];
+
+const DATE_SENSITIVE_CATEGORIES = ['Thực phẩm tươi sống', 'Đồ uống và bánh kẹo', 'Thực phẩm khô và Nhu yếu phẩm'];
+
+const makeAutoBatchCode = (receiptCode, detailId) => `LOT-${String(receiptCode || '').replace(/^PN/, '')}-${detailId}`;
 
 function StatusBadge({ status }) {
   const cfg = STATUS_MAP[status] || { label: status, color: 'bg-slate-500/15 text-slate-400 border-slate-500/30', icon: AlertCircle };
@@ -54,6 +59,7 @@ export default function ImportDetailPage() {
   const { token, user } = useAuthStore();
 
   const [receipt, setReceipt]   = useState(null);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [actionLoading, setActionLoading] = useState('');
@@ -76,8 +82,12 @@ export default function ImportDetailPage() {
   const fetchReceipt = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/imports/${id}`);
+      const [res, locationRes] = await Promise.all([
+        api.get(`/imports/${id}`),
+        api.get('/locations'),
+      ]);
       setReceipt(res.data);
+      setLocations(Array.isArray(locationRes.data) ? locationRes.data : []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -107,20 +117,59 @@ export default function ImportDetailPage() {
   const handleInspect = () => {
     if (!receipt) return;
     setInspectDetails(
-      receipt.details.map((d) => ({
-        detail_id: d.id,
-        product_name: d.product?.name || '',
-        expected: d.quantity,
-        received_qty: String(d.quantity),
-        accepted_qty: String(d.quantity),
-        rejected_qty: '0',
-      }))
+      receipt.details.map((d) => {
+        const category = d.product?.category || '';
+        const defaultLocation = locations.find(
+          (loc) => loc.zone?.trim().toLowerCase() === category.trim().toLowerCase()
+        );
+
+        return {
+          detail_id: d.id,
+          product_name: d.product?.name || '',
+          product_category: category,
+          expected: d.expected_quantity ?? d.quantity,
+          received_qty: String(d.received_quantity ?? d.quantity),
+          accepted_qty: String(d.accepted_quantity ?? d.quantity),
+          rejected_qty: String(d.rejected_quantity ?? 0),
+          batch_code: d.batch_code || makeAutoBatchCode(receipt.receipt_code, d.id),
+          mfg_date: d.mfg_date ? String(d.mfg_date).slice(0, 10) : '',
+          expiry_date: d.expiry_date ? String(d.expiry_date).slice(0, 10) : '',
+          location_id: d.location_id ? String(d.location_id) : (defaultLocation ? String(defaultLocation.id) : ''),
+        };
+      })
     );
     setInspectNotes('');
     setShowInspect(true);
   };
 
   const submitInspect = () => {
+    for (const item of inspectDetails) {
+      const received = parseInt(item.received_qty, 10) || 0;
+      const accepted = parseInt(item.accepted_qty, 10) || 0;
+      const rejected = parseInt(item.rejected_qty, 10) || 0;
+
+      if (accepted + rejected !== received) {
+        setError(`Sản phẩm "${item.product_name}": số lượng đạt và lỗi phải bằng số lượng nhận.`);
+        return;
+      }
+      if (!item.batch_code?.trim()) {
+        setError(`Sản phẩm "${item.product_name}" bắt buộc có mã lô.`);
+        return;
+      }
+      if (DATE_SENSITIVE_CATEGORIES.includes(item.product_category) && (!item.mfg_date || !item.expiry_date)) {
+        setError(`Sản phẩm "${item.product_name}" cần nhập NSX và HSD.`);
+        return;
+      }
+      if (item.mfg_date && item.expiry_date && new Date(item.mfg_date) >= new Date(item.expiry_date)) {
+        setError(`Sản phẩm "${item.product_name}" có NSX phải trước HSD.`);
+        return;
+      }
+      if (!item.location_id) {
+        setError(`Sản phẩm "${item.product_name}" cần chọn vị trí kệ.`);
+        return;
+      }
+    }
+
     doAction('inspect', {
       issue_notes: inspectNotes,
       details: inspectDetails.map((d) => ({
@@ -128,6 +177,10 @@ export default function ImportDetailPage() {
         received_qty: parseInt(d.received_qty) || 0,
         accepted_qty: parseInt(d.accepted_qty) || 0,
         rejected_qty: parseInt(d.rejected_qty) || 0,
+        batch_code: d.batch_code,
+        mfg_date: d.mfg_date || null,
+        expiry_date: d.expiry_date || null,
+        location_id: d.location_id ? parseInt(d.location_id, 10) : null,
       })),
     });
     setShowInspect(false);
@@ -275,7 +328,7 @@ export default function ImportDetailPage() {
               Kiểm tra hàng hoá
             </button>
           )}
-          {receipt.status === 'INSPECTING' && (
+          {['INSPECTING', 'PENDING_APPROVAL'].includes(receipt.status) && user?.role === 'admin' && (
             <button
               onClick={handleComplete}
               disabled={!!actionLoading}
@@ -284,6 +337,12 @@ export default function ImportDetailPage() {
               {actionLoading === 'complete' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Hoàn tất nhập kho
             </button>
+          )}
+          {receipt.status === 'PENDING_APPROVAL' && user?.role !== 'admin' && (
+            <div className="inline-flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2.5 text-sm font-semibold text-orange-500">
+              <Clock className="h-4 w-4" />
+              Đang chờ Admin duyệt nhập kho
+            </div>
           )}
           <button
             onClick={() => setShowCancel(true)}
@@ -434,7 +493,7 @@ export default function ImportDetailPage() {
                         {formatCurrency((d.accepted_quantity ?? d.quantity) * Number(d.unit_price))}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{d.batch_code || '—'}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{d.batch_code || makeAutoBatchCode(receipt.receipt_code, d.id)}</p>
                         {d.expiry_date && (
                           <p className="text-xs text-slate-400">HSD: {formatDate(d.expiry_date)}</p>
                         )}
@@ -490,7 +549,7 @@ export default function ImportDetailPage() {
                         value={d.received_qty}
                         onChange={(e) => {
                           const v = e.target.value;
-                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, received_qty: v } : r));
+                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, received_qty: v, accepted_qty: v, rejected_qty: '0' } : r));
                         }}
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
@@ -518,6 +577,66 @@ export default function ImportDetailPage() {
                         }}
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Mã lô</label>
+                      <input
+                        type="text"
+                        value={d.batch_code}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, batch_code: v } : r));
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">NSX</label>
+                      <input
+                        type="date"
+                        value={d.mfg_date}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, mfg_date: v } : r));
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">HSD</label>
+                      <input
+                        type="date"
+                        value={d.expiry_date}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, expiry_date: v } : r));
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Vị trí kệ</label>
+                      <select
+                        value={d.location_id}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setInspectDetails((prev) => prev.map((r, j) => j === i ? { ...r, location_id: v } : r));
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <option value="">-- Chọn kệ --</option>
+                        {(() => {
+                          const sameZone = locations.filter((loc) => !d.product_category || loc.zone?.trim().toLowerCase() === d.product_category.trim().toLowerCase());
+                          const list = sameZone.length ? sameZone : locations;
+                          return list.map((loc) => (
+                            <option key={loc.id} value={String(loc.id)}>
+                              {loc.location_code} - Trống: {loc.available_capacity ?? Math.max(0, (loc.max_capacity || 0) - (loc.current_occupied || 0))}
+                            </option>
+                          ));
+                        })()}
+                      </select>
                     </div>
                   </div>
                 </div>

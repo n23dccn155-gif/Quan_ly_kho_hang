@@ -6,8 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  AlertTriangle,
   Bell,
   ChevronDown,
+  Clock,
   LayoutDashboard,
   Lightbulb,
   LogOut,
@@ -29,15 +31,21 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const dropdownRef = useRef(null);
+  const notificationRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useState('light');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
+  const [notificationData, setNotificationData] = useState({ alerts_count: 0, alerts: [], activities: [] });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
       }
     };
 
@@ -60,18 +68,21 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const fetchAlerts = async () => {
+    const fetchNotifications = async () => {
       try {
         const { default: api } = await import('@/lib/api');
-        const res = await api.get('/inventory/alerts');
-        const summary = res.data.summary || {};
-        setAlertCount((summary.low_stock_count || 0) + (summary.expired_count || 0));
+        const res = await api.get('/inventory/bell-notifications');
+        const data = res.data || { alerts_count: 0, alerts: [], activities: [] };
+        setNotificationData(data);
+        setAlertCount(data.alerts_count || 0);
       } catch (error) {
-        console.error('Failed to fetch alerts:', error);
+        console.error('Failed to fetch notifications:', error);
       }
     };
 
-    fetchAlerts();
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, [isAuthenticated]);
 
   const toggleTheme = () => {
@@ -92,6 +103,11 @@ export default function DashboardLayout({ children }) {
     } else {
       document.exitFullscreen().catch(() => {});
     }
+  };
+
+  const handleNotificationNavigate = (path) => {
+    setIsNotificationsOpen(false);
+    router.push(path);
   };
 
   if (isLoading || !isAuthenticated) {
@@ -218,18 +234,80 @@ export default function DashboardLayout({ children }) {
                 <Maximize className="h-5 w-5" strokeWidth={2} />
               </button>
 
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="relative rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
-                title="Cảnh báo kho"
-              >
-                <Bell className="h-5 w-5" strokeWidth={2} />
-                {alertCount > 0 && (
-                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-slate-800">
-                    {alertCount > 9 ? '9+' : alertCount}
-                  </span>
+              <div ref={notificationRef} className="relative">
+                <button
+                  onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                  className="relative rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+                  title="Thông báo"
+                >
+                  <Bell className={`h-5 w-5 ${alertCount > 0 ? 'animate-pulse text-red-400' : ''}`} strokeWidth={2} />
+                  {alertCount > 0 && (
+                    <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-slate-800">
+                      {alertCount > 9 ? '9+' : alertCount}
+                    </span>
+                  )}
+                </button>
+
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-xl border border-gray-100 bg-white text-slate-700 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                    <div className="border-b border-gray-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Thông báo hệ thống</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notificationData.alerts?.length > 0 && (
+                        <div className="p-2">
+                          <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Cảnh báo</div>
+                          {notificationData.alerts.map((item, index) => {
+                            const isImport = ['arrival_confirmation', 'pending_approval'].includes(item.type);
+                            const isReturn = item.type === 'pending_return';
+                            const target = isImport ? '/dashboard/imports' : isReturn ? '/dashboard/exports' : '/dashboard/alerts';
+
+                            return (
+                              <button
+                                key={`${item.type}-${index}`}
+                                type="button"
+                                onClick={() => handleNotificationNavigate(target)}
+                                className="flex w-full items-start gap-3 rounded-lg p-2 text-left transition hover:bg-red-50 dark:hover:bg-slate-800"
+                              >
+                                <div className={`mt-0.5 rounded-full p-1.5 ${isImport ? 'bg-cyan-100 text-cyan-600' : isReturn ? 'bg-rose-100 text-rose-600' : 'bg-red-100 text-red-600'}`}>
+                                  <AlertTriangle className="h-4 w-4" />
+                                </div>
+                                <p className="text-sm font-medium leading-snug text-slate-800 dark:text-slate-100">{item.message}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {notificationData.activities?.length > 0 && (
+                        <div className="border-t border-gray-50 p-2 dark:border-slate-800">
+                          <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Hoạt động gần đây</div>
+                          {notificationData.activities.map((item, index) => (
+                            <button
+                              key={`${item.type}-${index}`}
+                              type="button"
+                              onClick={() => handleNotificationNavigate(item.type === 'import' ? '/dashboard/imports' : '/dashboard/exports')}
+                              className="flex w-full items-start gap-3 rounded-lg p-2 text-left transition hover:bg-cyan-50 dark:hover:bg-slate-800"
+                            >
+                              <div className={`mt-0.5 rounded-full p-1.5 ${item.type === 'import' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'}`}>
+                                {item.type === 'import' ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
+                              </div>
+                              <p className="text-sm leading-snug text-slate-600 dark:text-slate-300">{item.message}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {!(notificationData.alerts?.length || notificationData.activities?.length) && (
+                        <div className="p-6 text-center text-slate-500">
+                          <Clock className="mx-auto mb-2 h-6 w-6 text-slate-300" />
+                          <p className="text-sm">Không có thông báo mới</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
 
               <button
                 onClick={toggleTheme}
