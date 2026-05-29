@@ -1,13 +1,9 @@
 'use client';
 
-/** SSR: mỗi request lấy danh sách phiếu nhập mới nhất từ API */
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useDialogStore } from '@/store/useDialogStore';
 import {
   ArrowDownToLine, Plus, Search, Filter, RefreshCw,
   Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown,
@@ -15,37 +11,41 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-export const metadata = {
-  title: 'Phiếu nhập kho | WMS',
-  description: 'Danh sách phiếu nhập — Server-Side Rendering',
+import api from '@/lib/api';
+// ─── Status config ────────────────────────────────────────────
+const STATUS_MAP = {
+  IN_TRANSIT:  { label: 'Đang vận chuyển', color: 'bg-blue-500/15 text-blue-600 border-blue-500/30', card: 'border-blue-200 bg-blue-50 text-blue-700 shadow-blue-100', icon: Truck },
+  ARRIVED:     { label: 'Đã về kho',        color: 'bg-amber-500/15 text-amber-600 border-amber-500/30', card: 'border-amber-200 bg-amber-50 text-amber-700 shadow-amber-100', icon: Package },
+  INSPECTING:  { label: 'Đang kiểm tra',    color: 'bg-cyan-500/15 text-cyan-600 border-cyan-500/30', card: 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-cyan-100', icon: Clock },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-orange-500/15 text-orange-600 border-orange-500/30', card: 'border-orange-200 bg-orange-50 text-orange-700 shadow-orange-100', icon: Clock },
+  COMPLETED:   { label: 'Hoàn tất',         color: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30', card: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-emerald-100', icon: CheckCircle2 },
+  CANCELLED:   { label: 'Đã huỷ',           color: 'bg-red-500/15 text-red-600 border-red-500/30', card: 'border-red-200 bg-red-50 text-red-700 shadow-red-100', icon: XCircle },
 };
 
-async function loadImports(accessToken) {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  const res = await fetch(`${base}/imports?page=1&limit=15`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) return null;
-  return res.json();
+function StatusBadge({ status }) {
+  const cfg = STATUS_MAP[status] || { label: status, color: 'bg-slate-500/15 text-slate-400 border-slate-500/30', icon: AlertCircle };
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${cfg.color}`}>
+      <Icon className="h-3 w-3" />
+      {cfg.label}
+    </span>
+  );
 }
 
-<<<<<<< HEAD
 function formatCurrency(n) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 }
 
-export default function ImportsPage() {
+export default function ImportsListClient({ initialData = null }) {
   const router = useRouter();
   const { token, user } = useAuthStore();
-  const { showConfirm, showAlert } = useDialogStore();
 
-  const [receipts, setReceipts]   = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 15, total_pages: 1 });
-  const [loading, setLoading]     = useState(true);
+  const [receipts, setReceipts]   = useState(initialData?.data || []);
+  const [pagination, setPagination] = useState(
+    initialData?.pagination || { total: 0, page: 1, limit: 15, total_pages: 1 }
+  );
+  const [loading, setLoading]     = useState(!initialData);
   const [error, setError]         = useState('');
 
   // Input states
@@ -156,21 +156,15 @@ export default function ImportsPage() {
   };
 
   // ── delete ─────────────────────────────────────────────────
-  const handleDelete = (id, code) => {
-    showConfirm(
-      'Xác nhận Xóa',
-      `Bạn có chắc muốn xóa vĩnh viễn phiếu nhập ${code}?`,
-      async () => {
-        try {
-          await api.delete(`/imports/${id}`);
-          showAlert('Thành công', 'Đã xóa phiếu nhập thành công.');
-          fetchReceipts();
-          fetchStats();
-        } catch (e) {
-          showAlert('Lỗi', e.response?.data?.error || e.message);
-        }
-      }
-    );
+  const handleDelete = async (id, code) => {
+    if (!confirm(`Xoá phiếu nhập ${code}?`)) return;
+    try {
+      await api.delete(`/imports/${id}`);
+      fetchReceipts();
+      fetchStats();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message);
+    }
   };
 
   const handleExportExcel = () => {
@@ -178,7 +172,7 @@ export default function ImportsPage() {
     const data = receipts.map((r, i) => ({
       'STT': i + 1,
       'Mã phiếu': r.receipt_code,
-      'Nhà cung cấp': r.supplier_name || '—',
+      'Nhà cung cấp': r.supplier?.name || '',
       'Ngày nhập': r.import_date ? new Date(r.import_date).toLocaleDateString('vi-VN') : '',
       'Tổng tiền (VNĐ)': r.total_amount,
       'Trạng thái': STATUS_MAP[r.status]?.label || r.status,
