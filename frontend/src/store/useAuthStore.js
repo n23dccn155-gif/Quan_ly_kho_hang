@@ -12,6 +12,7 @@ export const useAuthStore = create((set, get) => ({
     set({ accessToken: token });
     if (typeof window !== 'undefined') {
       localStorage.setItem('accessToken', token);
+      document.cookie = `accessToken=${token}; path=/; max-age=900; SameSite=Lax`;
     }
   },
 
