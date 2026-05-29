@@ -15,6 +15,13 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  updateUser: (user) => {
+    set({ user });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  },
+
   login: async (username, password) => {
     set({ isLoading: true });
     try {
