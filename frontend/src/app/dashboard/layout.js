@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }) {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-100 text-slate-700">
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-100 text-slate-700 dark:bg-slate-950 dark:text-slate-200">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
           <p className="text-sm font-medium tracking-wide text-slate-500">Đang xác thực quyền truy cập...</p>
@@ -128,13 +128,13 @@ export default function DashboardLayout({ children }) {
 
   const Sidebar = ({ mobile = false }) => (
     <aside
-      className={`bg-gray-50 text-gray-700 shadow-xl print:hidden ${
+      className={`bg-gray-50 text-gray-700 shadow-xl dark:bg-slate-950 dark:text-slate-200 print:hidden ${
         mobile
           ? 'h-screen w-64'
           : 'fixed left-0 top-0 z-40 hidden h-screen w-64 md:block'
       }`}
     >
-      <div className="flex h-20 items-center justify-center border-b border-gray-200 bg-slate-600 px-4">
+      <div className="flex h-20 items-center justify-center border-b border-gray-200 bg-slate-600 px-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-2">
           <Package className="h-11 w-11 text-white" strokeWidth={2} />
           <div className="min-w-0">
@@ -160,8 +160,8 @@ export default function DashboardLayout({ children }) {
               onClick={() => mobile && setIsSidebarOpen(false)}
               className={`group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive
-                  ? 'bg-gray-200 text-cyan-600 shadow-md'
-                  : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm'
+                  ? 'bg-gray-200 text-cyan-600 shadow-md dark:bg-slate-800 dark:text-cyan-300'
+                  : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white'
               }`}
             >
               <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
@@ -174,7 +174,7 @@ export default function DashboardLayout({ children }) {
   );
 
   return (
-    <div className="min-h-screen wms-shell text-slate-900">
+    <div className="min-h-screen wms-shell text-slate-900 dark:text-slate-100">
       <Sidebar />
 
       {isSidebarOpen && (
@@ -261,19 +261,28 @@ export default function DashboardLayout({ children }) {
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-gray-100 bg-white py-2 text-gray-700 shadow-xl">
-                    <div className="border-b border-gray-100 px-4 py-3">
+                  <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-gray-100 bg-white py-2 text-gray-700 shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                    <div className="border-b border-gray-100 px-4 py-3 dark:border-slate-800">
                       <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Đang đăng nhập</p>
-                      <p className="mt-1 truncate text-sm font-bold text-slate-800">{user?.full_name}</p>
-                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-700">
+                      <p className="mt-1 truncate text-sm font-bold text-slate-800 dark:text-slate-50">{user?.full_name}</p>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-200">
                         <User className="h-3 w-3" />
                         {user?.role}
                       </span>
                     </div>
 
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      <User className="h-4 w-4" strokeWidth={2} />
+                      Hồ sơ cá nhân
+                    </Link>
+
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-gray-50"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-gray-50 dark:text-red-300 dark:hover:bg-slate-800"
                     >
                       <LogOut className="h-4 w-4" strokeWidth={2} />
                       Đăng xuất

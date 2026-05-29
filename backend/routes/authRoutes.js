@@ -9,5 +9,8 @@ router.post('/refresh-token', authController.refreshToken);
 
 // Protected routes
 router.get('/profile', authenticateToken, authController.getProfile);
+router.get('/me', authenticateToken, authController.getProfile);
+router.put('/update-profile', authenticateToken, authController.updateProfile);
+router.post('/change-password', authenticateToken, authController.changePassword);
 
 module.exports = router;
