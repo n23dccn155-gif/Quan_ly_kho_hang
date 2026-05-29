@@ -19,6 +19,48 @@ const serializeRow = (row) => {
   return result;
 };
 
+const formatDateCode = () => {
+  const today = new Date();
+  return [
+    String(today.getFullYear()).slice(-2),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('');
+};
+
+const getNextReceiptCode = async ({ model, prefix, digits }) => {
+  const fullPrefix = `${prefix}${formatDateCode()}`;
+  const last = await prisma[model].findFirst({
+    where: { receipt_code: { startsWith: fullPrefix } },
+    orderBy: { receipt_code: 'desc' },
+  });
+
+  const lastSequence = last ? Number.parseInt(last.receipt_code.slice(-digits), 10) : 0;
+  return `${fullPrefix}${String((Number.isNaN(lastSequence) ? 0 : lastSequence) + 1).padStart(digits, '0')}`;
+};
+
+// GET /api/inventory/next-import-code
+exports.getNextImportCode = async (req, res) => {
+  try {
+    const receiptCode = await getNextReceiptCode({ model: 'importReceipt', prefix: 'PN', digits: 4 });
+    return res.json({ success: true, receipt_code: receiptCode });
+  } catch (error) {
+    console.error('Error generating next import code:', error);
+    return res.status(500).json({ success: false, error: 'Không thể tạo mã phiếu nhập kế tiếp.' });
+  }
+};
+
+// GET /api/inventory/next-export-code
+exports.getNextExportCode = async (req, res) => {
+  try {
+    const receiptCode = await getNextReceiptCode({ model: 'exportReceipt', prefix: 'PX', digits: 3 });
+    return res.json({ success: true, receipt_code: receiptCode });
+  } catch (error) {
+    console.error('Error generating next export code:', error);
+    return res.status(500).json({ success: false, error: 'Không thể tạo mã phiếu xuất kế tiếp.' });
+  }
+};
+
 // GET /api/inventory
 exports.getInventory = async (req, res) => {
   try {
@@ -46,7 +88,9 @@ exports.getProductLots = async (req, res) => {
     if (!productId) return res.status(400).json({ error: 'productId không hợp lệ.' });
 
     const lots = await prisma.$queryRaw`
-      SELECT "lot_id"::int, "batch_code", "expiry_date", "import_date", "supplier_id"::int,
+      SELECT "lot_id"::int,
+             COALESCE("batch_code", 'LOT-' || regexp_replace("receipt_code", '^PN', '') || '-' || "lot_id"::text) AS "batch_code",
+             "expiry_date", "import_date", "supplier_id"::int,
              "import_qty"::int, "exported_qty"::int, "current_lot_stock"::int,
              "available_lot_stock"::int, "unit_price"::float, "receipt_code"
       FROM "v_lot_stock"
@@ -187,7 +231,8 @@ exports.getAlerts = async (req, res) => {
 
     const expiringSoon = await prisma.$queryRaw`
       SELECT vls.lot_id::int, vls.product_id::int, vls.product_code, vls.product_name,
-             vls.batch_code, vls.expiry_date, vls.current_lot_stock::int,
+             COALESCE(vls.batch_code, 'LOT-' || regexp_replace(vls.receipt_code, '^PN', '') || '-' || vls.lot_id::text) AS batch_code,
+             vls.expiry_date, vls.current_lot_stock::int,
              vls.available_lot_stock::int, vls.unit,
              (vls.expiry_date - CURRENT_DATE)::int AS days_until_expiry,
              p.min_days_to_sell::int, p.expiry_warning_days::int
@@ -202,7 +247,8 @@ exports.getAlerts = async (req, res) => {
 
     const expired = await prisma.$queryRaw`
       SELECT vls.lot_id::int, vls.product_id::int, vls.product_code, vls.product_name,
-             vls.batch_code, vls.expiry_date, vls.current_lot_stock::int,
+             COALESCE(vls.batch_code, 'LOT-' || regexp_replace(vls.receipt_code, '^PN', '') || '-' || vls.lot_id::text) AS batch_code,
+             vls.expiry_date, vls.current_lot_stock::int,
              vls.available_lot_stock::int, vls.unit,
              (vls.expiry_date - CURRENT_DATE)::int AS days_until_expiry,
              p.min_days_to_sell::int, p.expiry_warning_days::int
@@ -348,7 +394,7 @@ exports.getBellNotifications = async (req, res) => {
           AND vls.expiry_date < CURRENT_DATE
           AND vls.available_lot_stock > 0
       `,
-      prisma.importReceipt.count({ where: { status: { in: ['ARRIVED', 'INSPECTING'] } } }),
+      prisma.importReceipt.count({ where: { status: { in: ['ARRIVED', 'INSPECTING', 'PENDING_APPROVAL'] } } }),
       prisma.exportReceipt.count({ where: { reason: 'RETURN', status: 'PENDING_APPROVAL' } }),
       prisma.importReceipt.findMany({
         orderBy: { created_at: 'desc' },
@@ -366,7 +412,7 @@ exports.getBellNotifications = async (req, res) => {
     if (lowStock[0]?.c > 0) alerts.push({ type: 'low_stock', message: `Có ${lowStock[0].c} sản phẩm dưới mức tồn kho tối thiểu.` });
     if (expiringSoon[0]?.c > 0) alerts.push({ type: 'expiring_soon', message: `Có ${expiringSoon[0].c} lô hàng sắp hết hạn.` });
     if (expired[0]?.c > 0) alerts.push({ type: 'expired', message: `Có ${expired[0].c} lô hàng đã hết hạn.` });
-    if (pendingImports > 0) alerts.push({ type: 'arrival_confirmation', message: `Có ${pendingImports} phiếu nhập cần xử lý.` });
+    if (pendingImports > 0) alerts.push({ type: 'arrival_confirmation', message: `Có ${pendingImports} phiếu nhập cần Admin/Nhân viên xử lý.` });
     if (pendingReturns > 0) alerts.push({ type: 'pending_return', message: `Có ${pendingReturns} phiếu trả NCC đang chờ duyệt.` });
 
     const activities = [...recentImports.map((item) => ({

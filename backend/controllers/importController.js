@@ -2,14 +2,14 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // ────────────────────────────────────────────────────────────
-// Utility: generate receipt code  PN-YYYYMMDD-XXXX
+// Utility: generate receipt code like TTCS: PN + YYMMDD + 4-digit sequence
 // ────────────────────────────────────────────────────────────
 async function generateReceiptCode() {
   const today = new Date();
-  const y = today.getFullYear();
+  const y = String(today.getFullYear()).slice(-2);
   const m = String(today.getMonth() + 1).padStart(2, '0');
   const d = String(today.getDate()).padStart(2, '0');
-  const prefix = `PN-${y}${m}${d}-`;
+  const prefix = `PN${y}${m}${d}`;
 
   const last = await prisma.importReceipt.findFirst({
     where: { receipt_code: { startsWith: prefix } },
@@ -18,8 +18,7 @@ async function generateReceiptCode() {
 
   let seq = 1;
   if (last) {
-    const parts = last.receipt_code.split('-');
-    seq = parseInt(parts[parts.length - 1], 10) + 1;
+    seq = parseInt(last.receipt_code.slice(-4), 10) + 1;
   }
   return `${prefix}${String(seq).padStart(4, '0')}`;
 }
@@ -129,7 +128,9 @@ exports.getById = async (req, res) => {
                 product_code: true,
                 name: true,
                 unit: true,
+                category: true,
                 unit_price: true,
+                location_id: true,
               },
             },
             lot_location: { select: { id: true, location_code: true, name: true } },
@@ -303,24 +304,33 @@ exports.inspect = async (req, res) => {
       return res.status(400).json({ error: 'Phiếu nhập phải ở trạng thái ARRIVED để kiểm tra.' });
     }
 
-    // Update each detail's quantities
-    await Promise.all(
-      details.map((d) =>
-        prisma.importDetail.update({
-          where: { id: parseInt(d.detail_id) },
-          data: {
-            received_quantity: parseInt(d.received_qty) || null,
-            accepted_quantity: parseInt(d.accepted_qty) || null,
-            rejected_quantity: parseInt(d.rejected_qty) || 0,
-          },
-        })
-      )
-    );
+    for (const d of details) {
+      const detailId = parseInt(d.detail_id, 10);
+      const receivedQty = parseInt(d.received_qty ?? d.received_quantity, 10);
+      const acceptedQty = parseInt(d.accepted_qty ?? d.accepted_quantity ?? d.quantity, 10);
+      const rejectedQty = parseInt(d.rejected_qty ?? d.rejected_quantity, 10);
+
+      if (!detailId) continue;
+
+      await prisma.importDetail.update({
+        where: { id: detailId },
+        data: {
+          quantity: Number.isNaN(acceptedQty) ? undefined : Math.max(0, acceptedQty),
+          received_quantity: Number.isNaN(receivedQty) ? null : Math.max(0, receivedQty),
+          accepted_quantity: Number.isNaN(acceptedQty) ? null : Math.max(0, acceptedQty),
+          rejected_quantity: Number.isNaN(rejectedQty) ? 0 : Math.max(0, rejectedQty),
+          batch_code: d.batch_code?.trim() || undefined,
+          mfg_date: d.mfg_date ? new Date(d.mfg_date) : undefined,
+          expiry_date: d.expiry_date ? new Date(d.expiry_date) : undefined,
+          location_id: d.location_id ? parseInt(d.location_id, 10) : undefined,
+        },
+      });
+    }
 
     const updated = await prisma.importReceipt.update({
       where: { id },
       data: {
-        status: 'INSPECTING',
+        status: 'PENDING_APPROVAL',
         inspected_by,
         inspected_at: new Date(),
         issue_notes: issue_notes || null,
@@ -348,8 +358,11 @@ exports.complete = async (req, res) => {
       include: { details: true },
     });
     if (!receipt) return res.status(404).json({ error: 'Không tìm thấy phiếu nhập.' });
-    if (receipt.status !== 'INSPECTING') {
-      return res.status(400).json({ error: 'Phiếu nhập phải ở trạng thái INSPECTING để hoàn tất.' });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Chỉ Admin mới có quyền hoàn tất phiếu nhập sau khi kiểm kho.' });
+    }
+    if (!['PENDING_APPROVAL', 'INSPECTING'].includes(receipt.status)) {
+      return res.status(400).json({ error: 'Phiếu nhập phải ở trạng thái chờ duyệt để Admin hoàn tất.' });
     }
 
     // Update total_amount based on accepted_quantity or quantity
@@ -357,6 +370,18 @@ exports.complete = async (req, res) => {
       const qty = d.accepted_quantity ?? d.quantity;
       return sum + qty * Number(d.unit_price);
     }, 0);
+
+    const datePart = receipt.receipt_code?.replace(/^PN/, '') || String(receipt.id).padStart(6, '0');
+    for (const detail of receipt.details) {
+      const data = {};
+      if (!detail.batch_code) data.batch_code = `LOT-${datePart}-${detail.id}`;
+      if (detail.accepted_quantity != null && detail.quantity !== detail.accepted_quantity) {
+        data.quantity = detail.accepted_quantity;
+      }
+      if (Object.keys(data).length > 0) {
+        await prisma.importDetail.update({ where: { id: detail.id }, data });
+      }
+    }
 
     const updated = await prisma.importReceipt.update({
       where: { id },

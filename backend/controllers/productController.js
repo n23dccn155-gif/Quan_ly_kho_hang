@@ -28,6 +28,13 @@ const serializeProduct = (p, currentStock = 0) => {
     current_stock: currentStock,
     is_low_stock: currentStock < p.min_stock,
     supplier_ids: p.supplier_prices ? p.supplier_prices.map(sp => sp.supplier_id) : [],
+    supplier_prices: p.supplier_prices
+      ? p.supplier_prices.map(sp => ({
+          supplier_id: sp.supplier_id,
+          contract_price: sp.contract_price !== undefined && sp.contract_price !== null ? Number(sp.contract_price) : null,
+          lead_time_days: sp.lead_time_days,
+        }))
+      : [],
   };
 };
 
@@ -197,7 +204,7 @@ exports.getAllProducts = async (req, res) => {
           product: {
             include: { 
               default_location: true,
-              supplier_prices: { select: { supplier_id: true } }
+              supplier_prices: { select: { supplier_id: true, contract_price: true, lead_time_days: true } }
             }
           }
         }
@@ -222,7 +229,7 @@ exports.getAllProducts = async (req, res) => {
         where,
         include: { 
           default_location: true,
-          supplier_prices: { select: { supplier_id: true } }
+          supplier_prices: { select: { supplier_id: true, contract_price: true, lead_time_days: true } }
         },
         orderBy: { product_code: 'asc' },
         take: limitVal,
@@ -268,7 +275,10 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      include: { default_location: true }
+      include: {
+        default_location: true,
+        supplier_prices: { select: { supplier_id: true, contract_price: true, lead_time_days: true } }
+      }
     });
 
     if (!product || !product.is_active) {
