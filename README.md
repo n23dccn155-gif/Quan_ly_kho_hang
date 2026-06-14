@@ -171,7 +171,7 @@ Quan_ly_kho_hang/
  **Bản Live Demo dự án:**
 
 - **Frontend (App):** [https://quan-ly-kho-hang-chi.vercel.app](https://quan-ly-kho-hang-chi.vercel.app)
-- **Backend API:** [[CHÈN LINK RENDER CỦA BẠN VÀO ĐÂY]]([CHÈN LINK RENDER CỦA BẠN VÀO ĐÂY])
+- **Backend API:** [https://wms-backend-fsyd.onrender.com](https://wms-backend-fsyd.onrender.com)
   *(Lưu ý: Bạn có thể sử dụng các tài khoản mặc định ở trên để đăng nhập trải nghiệm)*
 
 | Thành phần | Nền tảng                                      |
