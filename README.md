@@ -41,7 +41,7 @@ Copy-Item .env.example .env
 cp .env.example .env
 ```
 
-> File `.env.example` đã chứa sẵn đầy đủ thông tin kết nối database và JWT secret — bạn **không cần chỉnh sửa gì thêm**, chỉ cần copy là có thể chạy.
+> **Quan trọng:** Bạn cần mở file `.env` vừa tạo và cập nhật lại biến `DATABASE_URL` thành chuỗi kết nối PostgreSQL thực tế của bạn (ví dụ từ Neon Cloud hoặc Postgres local). Bạn cũng có thể điền thêm `GEMINI_API_KEY` nếu muốn trải nghiệm tính năng AI đề xuất.
 
 **Cài đặt dependencies:**
 
@@ -69,8 +69,11 @@ Mở terminal mới, từ thư mục gốc `Quan_ly_kho_hang`:
 
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 ```
+
+> Mặc định file `.env` của frontend đã được cấu hình trỏ tới `http://localhost:5001/api` để kết nối với backend.
 
 ---
 
