@@ -170,7 +170,7 @@ Quan_ly_kho_hang/
 
  **Bản Live Demo dự án:**
 
-- **Frontend (App):** [[CHÈN LINK VERCEL CỦA BẠN VÀO ĐÂY]]([CHÈN LINK VERCEL CỦA BẠN VÀO ĐÂY])
+- **Frontend (App):** [https://quan-ly-kho-hang-chi.vercel.app](https://quan-ly-kho-hang-chi.vercel.app)
 - **Backend API:** [[CHÈN LINK RENDER CỦA BẠN VÀO ĐÂY]]([CHÈN LINK RENDER CỦA BẠN VÀO ĐÂY])
   *(Lưu ý: Bạn có thể sử dụng các tài khoản mặc định ở trên để đăng nhập trải nghiệm)*
 

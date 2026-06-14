@@ -29,7 +29,7 @@ Trình duyệt (Vercel) ──(HTTPS)──> Backend Express (Render) ──(ORM
 | `JWT_SECRET` | Chuỗi ký tự bảo mật bất kỳ (≥32 ký tự) | Dùng để ký Access Token |
 | `JWT_REFRESH_SECRET` | Chuỗi ký tự bảo mật khác | Dùng để ký Refresh Token |
 | `GEMINI_API_KEY` | Gemini API Key từ Google AI Studio | Dùng cho phân hệ gợi ý bổ sung bằng AI |
-| `CORS_ORIGIN` | URL Vercel của bạn (ví dụ `[CHÈN LINK VERCEL CỦA BẠN VÀO ĐÂY]`) | Chặn request từ các domain lạ |
+| `CORS_ORIGIN` | URL Vercel của bạn (ví dụ `https://quan-ly-kho-hang-chi.vercel.app`) | Chặn request từ các domain lạ |
 | `PORT` | `5001` | Cổng dịch vụ |
 | `NODE_ENV` | `production` | Chạy môi trường sản phẩm |
 
