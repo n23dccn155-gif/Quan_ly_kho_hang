@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, Clock, Loader2, Mail, ShieldAlert, TrendingDown } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clock, Loader2, ShieldAlert, TrendingDown } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -94,21 +94,7 @@ export default function AlertsPage() {
     loadAlerts();
   }, []);
 
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailStatus, setEmailStatus] = useState('');
 
-  const handleSendEmail = async () => {
-    setSendingEmail(true);
-    setEmailStatus('');
-    try {
-      const res = await api.post('/inventory/alerts/send-email');
-      setEmailStatus(res.data.message || 'Đã gửi email cảnh báo.');
-    } catch (error) {
-      setEmailStatus(error.response?.data?.error || 'Gửi email thất bại. Kiểm tra cấu hình EMAIL_* trong backend/.env');
-    } finally {
-      setSendingEmail(false);
-    }
-  };
 
   const activeConfig = config[activeTab];
   const data = useMemo(() => alerts[activeTab] || [], [alerts, activeTab]);
@@ -126,21 +112,7 @@ export default function AlertsPage() {
               <p className="text-sm text-slate-500">{activeConfig.description}</p>
             </div>
           </div>
-          {user?.role === 'admin' && activeTab === 'low_stock' && (
-            <button
-              type="button"
-              onClick={handleSendEmail}
-              disabled={sendingEmail}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              <Mail className="h-4 w-4" />
-              {sendingEmail ? 'Đang gửi...' : 'Gửi email cảnh báo'}
-            </button>
-          )}
         </div>
-        {emailStatus && (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{emailStatus}</p>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
