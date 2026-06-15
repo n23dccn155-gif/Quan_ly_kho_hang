@@ -341,7 +341,7 @@ exports.markArrived = async (req, res) => {
 
 // ────────────────────────────────────────────────────────────
 // PATCH /api/imports/:id/inspect  — kiểm tra hàng hoá
-// Chuyển trạng thái ARRIVED → INSPECTING
+// Chuyển trạng thái ARRIVED → PENDING_APPROVAL
 // Body: { issue_notes, details: [{ detail_id, received_qty, accepted_qty, rejected_qty }] }
 // ────────────────────────────────────────────────────────────
 exports.inspect = async (req, res) => {
@@ -495,7 +495,7 @@ exports.inspect = async (req, res) => {
 
 // ────────────────────────────────────────────────────────────
 // PATCH /api/imports/:id/complete  — hoàn tất nhập kho
-// Chuyển trạng thái INSPECTING → COMPLETED
+// Chuyển trạng thái PENDING_APPROVAL → COMPLETED
 // ────────────────────────────────────────────────────────────
 exports.complete = async (req, res) => {
   try {

@@ -18,8 +18,8 @@ router.delete('/:id', requireAdmin, ctrl.remove);
 
 // ── Workflow transitions ───────────────────────────────────────
 router.patch('/:id/arrive', ctrl.markArrived);      // IN_TRANSIT → ARRIVED
-router.patch('/:id/inspect', ctrl.inspect);          // ARRIVED → INSPECTING
-router.patch('/:id/complete', ctrl.complete);        // INSPECTING → COMPLETED
+router.patch('/:id/inspect', ctrl.inspect);          // ARRIVED → PENDING_APPROVAL
+router.patch('/:id/complete', ctrl.complete);        // PENDING_APPROVAL → COMPLETED
 router.patch('/:id/cancel', ctrl.cancel);            // any → CANCELLED
 
 module.exports = router;
