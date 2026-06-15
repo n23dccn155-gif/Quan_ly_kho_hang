@@ -310,6 +310,65 @@ exports.getAlerts = async (req, res) => {
   }
 };
 
+// POST /api/inventory/alerts/dispose
+exports.disposeLot = async (req, res) => {
+  try {
+    const { import_detail_id, product_id, quantity } = req.body;
+    
+    if (!import_detail_id || !product_id || quantity === undefined) {
+      return res.status(400).json({ error: 'Thiếu thông tin lô hàng cần tiêu hủy.' });
+    }
+
+    if (quantity <= 0) {
+      return res.status(400).json({ error: 'Số lượng tiêu hủy phải lớn hơn 0.' });
+    }
+
+    // 1. Generate receipt_code for disposal
+    const today = new Date();
+    const prefix = 'PX' + [
+      String(today.getFullYear()).slice(-2),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('');
+
+    const last = await prisma.exportReceipt.findFirst({
+      where: { receipt_code: { startsWith: prefix } },
+      orderBy: { receipt_code: 'desc' },
+    });
+
+    const lastSequence = last ? Number.parseInt(last.receipt_code.slice(-3), 10) : 0;
+    const nextSequence = (Number.isNaN(lastSequence) ? 0 : lastSequence) + 1;
+    const receipt_code = `${prefix}${String(nextSequence).padStart(3, '0')}`;
+
+    // 2. Create ExportReceipt with reason DISPOSE
+    const exportReceipt = await prisma.exportReceipt.create({
+      data: {
+        receipt_code,
+        export_date: today,
+        reason: 'DISPOSE',
+        status: 'COMPLETED',
+        note: `Tiêu hủy tự động từ cảnh báo lô hàng hết hạn (Lot ID: ${import_detail_id})`,
+        created_by: req.user.id,
+        approved_by: req.user.id,
+        approved_at: today,
+        details: {
+          create: {
+            product_id: parseInt(product_id, 10),
+            import_detail_id: parseInt(import_detail_id, 10),
+            quantity: parseInt(quantity, 10),
+            selling_price: 0
+          }
+        }
+      }
+    });
+
+    return res.json({ success: true, message: 'Đã tiêu hủy lô hàng thành công.', receipt_code });
+  } catch (error) {
+    console.error('Error disposing lot:', error);
+    return res.status(500).json({ error: 'Lỗi hệ thống khi tiêu hủy lô hàng.' });
+  }
+};
+
 // GET /api/inventory/stats
 exports.getStats = async (req, res) => {
   try {

@@ -10,6 +10,7 @@ router.get('/next-import-code', inventoryController.getNextImportCode);
 router.get('/next-export-code', inventoryController.getNextExportCode);
 router.get('/dashboard', inventoryController.getDashboard);
 router.get('/alerts', inventoryController.getAlerts);
+router.post('/alerts/dispose', requireAdmin, inventoryController.disposeLot);
 router.post('/alerts/send-email', requireAdmin, inventoryController.sendLowStockEmail);
 router.get('/stats', inventoryController.getStats);
 router.get('/lots/:productId', inventoryController.getProductLots);
