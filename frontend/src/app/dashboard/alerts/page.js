@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, Clock, Loader2, ShieldAlert, TrendingDown } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clock, Loader2, Mail, ShieldAlert, TrendingDown } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -94,6 +94,21 @@ export default function AlertsPage() {
     loadAlerts();
   }, []);
 
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const res = await api.post('/inventory/alerts/send-email');
+      alert(res.data.message || 'Đã gửi email cảnh báo thành công!');
+    } catch (error) {
+      console.error('Failed to send email alert:', error);
+      alert(error.response?.data?.error || 'Không thể gửi email cảnh báo. Vui lòng kiểm tra cấu hình SMTP.');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const activeConfig = config[activeTab];
   const data = useMemo(() => alerts[activeTab] || [], [alerts, activeTab]);
 
@@ -110,6 +125,16 @@ export default function AlertsPage() {
               <p className="text-sm text-slate-500">{activeConfig.description}</p>
             </div>
           </div>
+          {activeTab === 'low_stock' && user?.role === 'admin' && (
+            <button
+              onClick={handleSendEmail}
+              disabled={sendingEmail || data.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2.5 text-sm shadow-md transition"
+            >
+              {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              Gửi mail cảnh báo 📧
+            </button>
+          )}
         </div>
       </div>
 
