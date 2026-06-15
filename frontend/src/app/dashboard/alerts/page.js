@@ -95,15 +95,16 @@ export default function AlertsPage() {
   }, []);
 
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState('');
 
   const handleSendEmail = async () => {
     setSendingEmail(true);
+    setEmailStatus('');
     try {
       const res = await api.post('/inventory/alerts/send-email');
-      alert(res.data.message || 'Đã gửi email cảnh báo thành công!');
+      setEmailStatus(res.data.message || 'Đã gửi email cảnh báo.');
     } catch (error) {
-      console.error('Failed to send email alert:', error);
-      alert(error.response?.data?.error || 'Không thể gửi email cảnh báo. Vui lòng kiểm tra cấu hình SMTP.');
+      setEmailStatus(error.response?.data?.error || 'Gửi email thất bại. Kiểm tra cấu hình EMAIL_* trong backend/.env');
     } finally {
       setSendingEmail(false);
     }
@@ -125,17 +126,21 @@ export default function AlertsPage() {
               <p className="text-sm text-slate-500">{activeConfig.description}</p>
             </div>
           </div>
-          {activeTab === 'low_stock' && user?.role === 'admin' && (
+          {user?.role === 'admin' && activeTab === 'low_stock' && (
             <button
+              type="button"
               onClick={handleSendEmail}
-              disabled={sendingEmail || data.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2.5 text-sm shadow-md transition"
+              disabled={sendingEmail}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-              Gửi mail cảnh báo 📧
+              <Mail className="h-4 w-4" />
+              {sendingEmail ? 'Đang gửi...' : 'Gửi email cảnh báo'}
             </button>
           )}
         </div>
+        {emailStatus && (
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{emailStatus}</p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
