@@ -82,6 +82,7 @@ export default function ProductsPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     reset,
     formState: { errors },
   } = useForm({
@@ -99,6 +100,58 @@ export default function ProductsPage() {
       expiry_warning_days: 30,
     },
   });
+
+  const categoryValue = watch('category');
+
+  // Auto-generate product code logic like TTCS
+  const getCategoryPrefix = (categoryName) => {
+    const categoryPrefixes = {
+      'Thực phẩm tươi sống': 'TS',
+      'Thực phẩm khô và Nhu yếu phẩm': 'TK',
+      'Đồ uống và bánh kẹo': 'BK',
+      'Hóa mỹ phẩm': 'MP',
+      'Đồ dùng gia đình': 'GD'
+    };
+    if (categoryPrefixes[categoryName]) {
+      return categoryPrefixes[categoryName];
+    }
+    if (!categoryName) return 'SP';
+    const normalized = categoryName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const words = normalized.split(/\s+/);
+    const initials = words.map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '');
+    return initials.slice(0, 3) || 'SP';
+  };
+
+  const generateNextProductCode = (categoryName) => {
+    const prefix = getCategoryPrefix(categoryName);
+    const matchingCodes = products
+      .filter(p => p.category === categoryName || p.product_code?.startsWith(prefix))
+      .map(p => {
+        const code = p.product_code || '';
+        const numPart = code.substring(prefix.length);
+        const num = parseInt(numPart, 10);
+        return isNaN(num) ? 0 : num;
+      });
+
+    const maxNum = matchingCodes.length > 0 ? Math.max(...matchingCodes) : 0;
+    const nextNum = maxNum + 1;
+    const padLength = 3;
+    return `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+  };
+
+  const handleCategoryChange = (e) => {
+    const categoryName = e.target.value;
+    if (categoryName) {
+      if (!editingProduct || categoryName !== editingProduct.category) {
+        const nextCode = generateNextProductCode(categoryName);
+        setValue('product_code', nextCode, { shouldValidate: true });
+      } else {
+        setValue('product_code', editingProduct.product_code, { shouldValidate: true });
+      }
+    } else {
+      setValue('product_code', '', { shouldValidate: true });
+    }
+  };
 
   // Open Form for Adding
   const handleAddClick = () => {
@@ -755,10 +808,10 @@ export default function ProductsPage() {
                   </label>
                   <input
                     {...register('product_code')}
-                    disabled={!!editingProduct}
+                    disabled={!categoryValue || !!editingProduct}
                     type="text"
-                    placeholder="Mã sản phẩm (ví dụ: TS011)"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none disabled:opacity-50"
+                    placeholder={categoryValue ? "Mã sản phẩm (ví dụ: TS011)" : "Vui lòng chọn danh mục trước"}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-900 disabled:cursor-not-allowed"
                   />
                   {errors.product_code && (
                     <p className="text-xs text-red-500 dark:text-red-400">{errors.product_code.message}</p>
@@ -787,7 +840,9 @@ export default function ProductsPage() {
                     Phân mục danh mục *
                   </label>
                   <select
-                    {...register('category')}
+                    {...register('category', {
+                      onChange: handleCategoryChange
+                    })}
                     className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
                   >
                     <option value="">Chọn danh mục...</option>
