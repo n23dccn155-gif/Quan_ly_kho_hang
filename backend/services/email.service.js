@@ -192,7 +192,7 @@ async function sendInspectionAlert(receipt, toEmail) {
       </table>
 
       <div style="margin-top: 28px; text-align: center;">
-        <a href="http://localhost:3000/dashboard/imports/${receipt.id}" 
+        <a href="${process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000'}/dashboard/imports/${receipt.id}" 
            style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
           Đi tới Duyệt nhập kho
         </a>
