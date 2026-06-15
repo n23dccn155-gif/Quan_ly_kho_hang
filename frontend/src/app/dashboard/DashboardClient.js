@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import {
   LogOut, User, Shield, Mail, AlertTriangle, ShieldAlert,
   Calendar, Clock, Eye, ArrowRight, TrendingDown,
-  Layers, ArrowDownLeft, ArrowUpRight, AlertCircle, Loader2, Sparkles, Plus
+  Layers, ArrowDownLeft, ArrowUpRight, AlertCircle, Loader2, Sparkles, Plus, Trash2
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -23,6 +23,8 @@ export default function DashboardClient() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedAlertCategory, setSelectedAlertCategory] = useState(null);
+  const [disposeConfirmItem, setDisposeConfirmItem] = useState(null);
+  const [isDisposing, setIsDisposing] = useState(false);
 
   // States for metrics
   const [overview, setOverview] = useState({
@@ -99,6 +101,34 @@ export default function DashboardClient() {
 
   const formatCurrency = (val) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+
+  const handleDisposeClick = (item) => {
+    if (user?.role !== 'admin') {
+      alert('Chỉ Admin mới có quyền tiêu hủy lô hàng.');
+      return;
+    }
+    setDisposeConfirmItem(item);
+  };
+
+  const confirmDispose = async () => {
+    if (!disposeConfirmItem) return;
+    setIsDisposing(true);
+    try {
+      await api.post('/inventory/alerts/dispose', {
+        import_detail_id: disposeConfirmItem.lot_id,
+        product_id: disposeConfirmItem.product_id,
+        quantity: disposeConfirmItem.available_lot_stock || disposeConfirmItem.current_lot_stock
+      });
+      // Refresh list
+      await loadDashboardData();
+      setDisposeConfirmItem(null);
+      alert('Đã tiêu hủy lô hàng thành công.');
+    } catch (error) {
+      alert(error.response?.data?.error || 'Lỗi khi tiêu hủy lô hàng.');
+    } finally {
+      setIsDisposing(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -666,6 +696,7 @@ export default function DashboardClient() {
                           <th className="px-4 py-3">Hạn sử dụng</th>
                           <th className="px-4 py-3 text-right">Tồn lô</th>
                           <th className="px-4 py-3 text-center">Tình trạng</th>
+                          <th className="px-4 py-3 text-center">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
@@ -679,6 +710,14 @@ export default function DashboardClient() {
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400 border-red-200/50">
                                 Đã quá hạn!
                               </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleDisposeClick(item)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Tiêu hủy
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -696,6 +735,41 @@ export default function DashboardClient() {
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition shadow-sm cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dispose Confirmation Modal */}
+      {disposeConfirmItem && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md transform rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col">
+            <div className="p-6">
+              <div className="flex items-center gap-3 text-red-600 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+                <h3 className="text-lg font-bold">Xác nhận tiêu hủy</h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Lô hàng này đã hết hạn. Bạn có chắc chắn muốn lập phiếu xuất tiêu hủy toàn bộ số tồn còn lại (<strong>{disposeConfirmItem.available_lot_stock || disposeConfirmItem.current_lot_stock} {disposeConfirmItem.unit}</strong>) không?
+              </p>
+              <p className="text-xs text-red-500 mt-2">Hành động này không thể hoàn tác.</p>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setDisposeConfirmItem(null)}
+                disabled={isDisposing}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDispose}
+                disabled={isDisposing}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 transition-colors"
+              >
+                {isDisposing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {isDisposing ? 'Đang xử lý...' : 'Xác nhận tiêu hủy'}
               </button>
             </div>
           </div>
