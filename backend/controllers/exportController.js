@@ -171,6 +171,10 @@ exports.create = async (req, res) => {
       note,
       customer_name,
       delivery_address,
+      latitude,
+      longitude,
+      distance_km,
+      estimated_delivery_days,
       supplier_id,
       items = [],
     } = req.body;
@@ -203,10 +207,14 @@ exports.create = async (req, res) => {
           note: note || null,
           customer_name: reason === 'SELL' ? (customer_name || null) : null,
           delivery_address: reason === 'SELL' ? (delivery_address || null) : null,
+          latitude: reason === 'SELL' && latitude ? parseFloat(latitude) : null,
+          longitude: reason === 'SELL' && longitude ? parseFloat(longitude) : null,
+          distance_km: reason === 'SELL' && distance_km ? parseFloat(distance_km) : null,
+          estimated_delivery_days: reason === 'SELL' && estimated_delivery_days ? parseInt(estimated_delivery_days) : null,
           supplier_id: reason === 'RETURN' ? parseInt(supplier_id) : null,
           created_by,
           total_amount: 0,
-          status: reason === 'RETURN' ? 'PENDING_APPROVAL' : 'COMPLETED',
+          status: 'PENDING_APPROVAL',
         },
       });
 
@@ -374,14 +382,10 @@ exports.approve = async (req, res) => {
       include: { details: true },
     });
     if (!receipt) return res.status(404).json({ error: 'Không tìm thấy phiếu xuất.' });
-    if (receipt.reason !== 'RETURN') {
-      return res.status(400).json({ error: 'Chỉ phê duyệt phiếu trả hàng nhà cung cấp.' });
-    }
     if (receipt.status !== 'PENDING_APPROVAL') {
       return res.status(400).json({ error: `Phiếu không ở trạng thái chờ duyệt. Hiện tại: ${receipt.status}` });
     }
 
-    // Verify stock availability one last time
     for (const detail of receipt.details) {
       const rows = await prisma.$queryRaw`
         SELECT current_lot_stock::int, batch_code
@@ -410,10 +414,12 @@ exports.approve = async (req, res) => {
       }
     }
 
+    const targetStatus = receipt.reason === 'SELL' ? 'DELIVERING' : 'COMPLETED';
+
     const updated = await prisma.exportReceipt.update({
       where: { id },
       data: {
-        status: 'COMPLETED',
+        status: targetStatus,
         approved_by,
         approved_at: new Date(),
       },
@@ -423,7 +429,7 @@ exports.approve = async (req, res) => {
     const io = req.app.get('io');
     if (io) io.emit('new_notification', { type: 'export_approved', receipt_id: id });
 
-    return res.json({ message: 'Phê duyệt phiếu trả hàng thành công.', receipt: updated });
+    return res.json({ message: 'Phê duyệt phiếu xuất thành công.', receipt: updated });
   } catch (err) {
     console.error('approve export error:', err);
     return res.status(500).json({ error: 'Lỗi hệ thống khi phê duyệt phiếu.' });
@@ -441,9 +447,7 @@ exports.reject = async (req, res) => {
       include: { details: true },
     });
     if (!receipt) return res.status(404).json({ error: 'Không tìm thấy phiếu xuất.' });
-    if (receipt.reason !== 'RETURN') {
-      return res.status(400).json({ error: 'Chỉ từ chối phiếu trả hàng nhà cung cấp.' });
-    }
+    if (!receipt) return res.status(404).json({ error: 'Không tìm thấy phiếu xuất.' });
     if (receipt.status !== 'PENDING_APPROVAL') {
       return res.status(400).json({ error: `Phiếu không ở trạng thái chờ duyệt.` });
     }
@@ -620,5 +624,36 @@ exports.remove = async (req, res) => {
   } catch (err) {
     console.error('remove export error:', err);
     return res.status(500).json({ error: 'Lỗi hệ thống khi xoá phiếu xuất.' });
+  }
+};
+
+// ────────────────────────────────────────────────────────────
+// PATCH /api/exports/:id/complete-delivery — xác nhận giao hàng thành công
+// ────────────────────────────────────────────────────────────
+exports.completeDelivery = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const receipt = await prisma.exportReceipt.findUnique({ where: { id } });
+    
+    if (!receipt) return res.status(404).json({ error: 'Không tìm thấy phiếu xuất.' });
+    if (receipt.reason !== 'SELL') {
+      return res.status(400).json({ error: 'Chỉ xác nhận giao hàng cho phiếu Bán hàng.' });
+    }
+    if (receipt.status !== 'DELIVERING') {
+      return res.status(400).json({ error: `Phiếu không ở trạng thái đang giao hàng.` });
+    }
+
+    const updated = await prisma.exportReceipt.update({
+      where: { id },
+      data: { status: 'COMPLETED' },
+    });
+
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'export_delivered', receipt_id: id });
+
+    return res.json({ message: 'Xác nhận giao hàng thành công.', receipt: updated });
+  } catch (err) {
+    console.error('completeDelivery error:', err);
+    return res.status(500).json({ error: 'Lỗi hệ thống khi xác nhận giao hàng.' });
   }
 };

@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDialogStore } from '@/store/useDialogStore';
 import QRScannerModal from '@/components/QRScannerModal';
+import dynamic from 'next/dynamic';
+
+const SupplierMap = dynamic(() => import('@/components/SupplierMap'), { ssr: false });
 import {
   AlertCircle,
   AlertTriangle,
@@ -16,6 +19,7 @@ import {
   Trash2,
   X,
   QrCode,
+  MapPin,
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -65,6 +69,11 @@ export default function NewExportPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isExpiryOpen, setIsExpiryOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [distanceKm, setDistanceKm] = useState(null);
+  const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
 
   useEffect(() => {
@@ -407,6 +416,10 @@ export default function NewExportPage() {
         export_date: exportDate,
         customer_name: reason === 'SELL' ? customerName : null,
         delivery_address: reason === 'SELL' ? deliveryAddress : null,
+        latitude: reason === 'SELL' ? latitude : null,
+        longitude: reason === 'SELL' ? longitude : null,
+        distance_km: reason === 'SELL' ? distanceKm : null,
+        estimated_delivery_days: reason === 'SELL' ? estimatedDeliveryDays : null,
         supplier_id: reason === 'RETURN' ? parseInt(supplierId, 10) : null,
         note,
         items: validItems.map((item) => ({
@@ -527,15 +540,30 @@ export default function NewExportPage() {
           )}
 
           {reason === 'SELL' && (
-            <label className="space-y-1">
+            <div className="space-y-1">
               <span className="ml-1 text-xs font-bold uppercase text-slate-500">Địa chỉ giao hàng</span>
-              <input
-                value={deliveryAddress}
-                onChange={(event) => setDeliveryAddress(event.target.value)}
-                placeholder="Nhập địa chỉ giao hàng..."
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
+              <div className="flex gap-2">
+                <input
+                  value={deliveryAddress}
+                  onChange={(event) => setDeliveryAddress(event.target.value)}
+                  placeholder="Nhập địa chỉ giao hàng..."
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-950"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsMapOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <MapPin className="h-5 w-5 text-indigo-500" />
+                  Bản đồ
+                </button>
+              </div>
+              {distanceKm !== null && (
+                <p className="ml-1 mt-2 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                  📍 Khoảng cách: {distanceKm} km — Dự kiến giao: {estimatedDeliveryDays} ngày
+                </p>
+              )}
+            </div>
           )}
 
           <label className={`space-y-1 ${reason === 'SELL' ? '' : 'md:col-span-2'}`}>
@@ -867,11 +895,54 @@ export default function NewExportPage() {
           </div>
         </div>
       )}
-      <QRScannerModal 
-        isOpen={isQrOpen} 
-        onClose={() => setIsQrOpen(false)} 
-        onScanSuccess={handleQrScanSuccess} 
-      />
+      {isQrOpen && (
+        <QRScannerModal isOpen={isQrOpen} onClose={() => setIsQrOpen(false)} onScanSuccess={handleQrScanSuccess} />
+      )}
+
+      {isMapOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setIsMapOpen(false)}>
+          <div className="flex h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-indigo-500" />
+                Chọn vị trí giao hàng trên bản đồ
+              </h2>
+              <button onClick={() => setIsMapOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 relative bg-slate-50 dark:bg-slate-950/50">
+              <SupplierMap
+                mode="select"
+                selectedLat={latitude}
+                selectedLng={longitude}
+                onPositionSelected={(lat, lng, distance) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                  setDistanceKm(distance);
+                  // Calculate ETA: 1 day per 50km
+                  const days = Math.floor(distance / 50) + (distance % 50 > 0 ? 1 : 0) - 1;
+                  setEstimatedDeliveryDays(Math.max(0, days));
+                }}
+              />
+            </div>
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex justify-between items-center dark:border-slate-800 dark:bg-slate-950/50">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {distanceKm !== null 
+                  ? `Khoảng cách: ${distanceKm} km (Dự kiến: ${estimatedDeliveryDays} ngày)` 
+                  : 'Hãy ghim một vị trí trên bản đồ để tính khoảng cách'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsMapOpen(false)}
+                className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500"
+              >
+                Xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

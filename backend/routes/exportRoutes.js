@@ -21,6 +21,7 @@ router.delete('/:id', requireAdmin, ctrl.remove);
 // ── Workflow transitions (cho phiếu RETURN) ─────────────────────
 router.patch('/:id/approve', requireAdmin, ctrl.approve);
 router.patch('/:id/reject', requireAdmin, ctrl.reject);
+router.patch('/:id/complete-delivery', ctrl.completeDelivery);
 
 // ── Huỷ phiếu ──────────────────────────────────────────────────
 router.patch('/:id/cancel', requireAdmin, ctrl.cancel);
