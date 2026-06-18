@@ -956,6 +956,26 @@ export default function ProductsPage() {
                     <p className="text-xs text-red-500 dark:text-red-400">{errors.expiry_warning_days.message}</p>
                   )}
                 </div>
+
+                {/* Min Days To Sell */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Số ngày bán tối thiểu còn lại (ngày)
+                  </label>
+                  <input
+                    {...register('min_days_to_sell')}
+                    type="number"
+                    min={0}
+                    placeholder="VD: 7 — không xuất nếu HSD dưới ngưỡng"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
+                  />
+                  {errors.min_days_to_sell && (
+                    <p className="text-xs text-red-500 dark:text-red-400">{errors.min_days_to_sell.message}</p>
+                  )}
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">
+                    Lô hàng có HSD còn lại ít hơn số ngày này sẽ không được phép xuất bán.
+                  </p>
+                </div>
               </div>
 
               {/* Description */}

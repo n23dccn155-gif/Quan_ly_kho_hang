@@ -419,6 +419,10 @@ exports.approve = async (req, res) => {
       },
     });
 
+    // Thông báo realtime: phiếu đã được duyệt → chuông tự cập nhật
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'export_approved', receipt_id: id });
+
     return res.json({ message: 'Phê duyệt phiếu trả hàng thành công.', receipt: updated });
   } catch (err) {
     console.error('approve export error:', err);
@@ -455,6 +459,10 @@ exports.reject = async (req, res) => {
         approved_at: new Date(),
       },
     });
+
+    // Thông báo realtime: phiếu bị từ chối → chuông tự cập nhật
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'export_rejected', receipt_id: id });
 
     return res.json({ message: 'Đã từ chối phiếu trả hàng.', receipt: updated });
   } catch (err) {
@@ -505,6 +513,10 @@ exports.cancel = async (req, res) => {
         },
       });
     });
+
+    // Thông báo realtime khi hủy phiếu xuất
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'export_cancelled', receipt_id: id });
 
     return res.json({ message: 'Phiếu xuất đã bị huỷ.', receipt: updated });
   } catch (err) {
