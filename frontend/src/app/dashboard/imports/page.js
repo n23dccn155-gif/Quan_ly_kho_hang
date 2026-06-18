@@ -1,17 +1,16 @@
 'use client';
 
-/** SSR: mỗi request lấy danh sách phiếu nhập mới nhất từ API */
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { io } from 'socket.io-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDialogStore } from '@/store/useDialogStore';
 import {
   ArrowDownToLine, Plus, Search, Filter, RefreshCw,
   Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown,
-  Truck, CheckCircle2, XCircle, Clock, Package, AlertCircle, Download
+  Truck, CheckCircle2, XCircle, Clock, Package, AlertCircle, Download,
+  Wifi
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import api from '@/lib/api';
@@ -128,6 +127,7 @@ export default function ImportsPage() {
 
   // Stats
   const [stats, setStats] = useState(null);
+  const [isLive, setIsLive] = useState(false);
 
   // ── fetch list ─────────────────────────────────────────────
   const fetchReceipts = useCallback(async () => {
@@ -161,6 +161,24 @@ export default function ImportsPage() {
   }, [token]);
 
   useEffect(() => { fetchReceipts(); fetchStats(); }, [fetchReceipts, fetchStats]);
+
+  // ── Socket.IO: Realtime auto-refresh ───────────────────────
+  useEffect(() => {
+    const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
+    const socket = io(socketUrl, { reconnectionAttempts: 5 });
+
+    socket.on('connect', () => setIsLive(true));
+    socket.on('disconnect', () => setIsLive(false));
+    socket.on('connect_error', () => setIsLive(false));
+
+    // Khi có sự kiện mới (admin duyệt, nhân viên kiểm kho...) → tự reload
+    socket.on('new_notification', () => {
+      fetchReceipts();
+      fetchStats();
+    });
+
+    return () => socket.disconnect();
+  }, [fetchReceipts, fetchStats]);
 
   // reset page khi filter thay đổi
   const applyFilter = () => {
@@ -216,7 +234,15 @@ export default function ImportsPage() {
             <ArrowDownToLine className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Phiếu nhập kho</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Phiếu nhập kho</h1>
+              {isLive && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <Wifi className="h-2.5 w-2.5" />
+                  LIVE
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {pagination.total} phiếu nhập
             </p>

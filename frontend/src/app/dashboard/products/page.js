@@ -7,8 +7,8 @@ import * as z from 'zod';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDialogStore } from '@/store/useDialogStore';
-import { 
-  Plus, Search, QrCode, Edit2, Trash2, Printer, 
+import {
+  Plus, Search, QrCode, Edit2, Trash2, Printer,
   X, AlertCircle, Check, Loader2, Sparkles, Filter,
   LayoutGrid, Package
 } from 'lucide-react';
@@ -36,13 +36,13 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [activeTab, setActiveTab] = useState('products');
-  
+
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -179,7 +179,7 @@ export default function ProductsPage() {
     setFormErrorMsg('');
     setIsFormOpen(true);
     setSubmitLoading(true);
-    
+
     try {
       // Set basic form values
       setValue('product_code', product.product_code);
@@ -259,7 +259,7 @@ export default function ProductsPage() {
   const onSubmit = async (data) => {
     setSubmitLoading(true);
     setFormErrorMsg('');
-    
+
     // Prepare supplier prices payload
     const supplier_ids = Object.keys(selectedSuppliers).map(sid => ({
       supplier_id: parseInt(sid),
@@ -355,12 +355,12 @@ export default function ProductsPage() {
 
   // Filter products locally on client side (or combines with search queries)
   const filteredProducts = products.filter(p => {
-    const matchesSearch = 
+    const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.product_code.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
     const matchesCategory = categoryFilter === '' || p.category === categoryFilter;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -380,7 +380,7 @@ export default function ProductsPage() {
             Quản lý thông tin hàng hóa, sơ đồ kệ kho lưu trữ và nhà cung cấp liên kết.
           </p>
         </div>
-        
+
         {isAdmin && activeTab === 'products' && (
           <button
             onClick={handleAddClick}
@@ -396,22 +396,20 @@ export default function ProductsPage() {
       <div className="flex gap-4 border-b border-slate-200/60 dark:border-slate-800/80 pb-px">
         <button
           onClick={() => setActiveTab('products')}
-          className={`flex items-center gap-2 border-b-2 pb-2.5 text-sm font-semibold transition-all cursor-pointer ${
-            activeTab === 'products'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
-          }`}
+          className={`flex items-center gap-2 border-b-2 pb-2.5 text-sm font-semibold transition-all cursor-pointer ${activeTab === 'products'
+            ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold'
+            : 'border-transparent text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
+            }`}
         >
           <Package className="h-4.5 w-4.5" />
           Sản phẩm ({products.length})
         </button>
         <button
           onClick={() => setActiveTab('locations')}
-          className={`flex items-center gap-2 border-b-2 pb-2.5 text-sm font-semibold transition-all cursor-pointer ${
-            activeTab === 'locations'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
-          }`}
+          className={`flex items-center gap-2 border-b-2 pb-2.5 text-sm font-semibold transition-all cursor-pointer ${activeTab === 'locations'
+            ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold'
+            : 'border-transparent text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
+            }`}
         >
           <LayoutGrid className="h-4.5 w-4.5" />
           Kệ hàng ({locations.length})
@@ -435,7 +433,7 @@ export default function ProductsPage() {
                 className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 pr-3 pl-10 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-650 focus:border-indigo-500/80 focus:outline-none"
               />
             </div>
-            
+
             {/* Category Filter */}
             <div className="relative w-full sm:w-60">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 dark:text-slate-500">
@@ -495,11 +493,10 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3.5 px-4 font-mono text-xs text-blue-600 dark:text-blue-400">{p.location_code || 'Chưa xếp kệ'}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            p.is_low_stock 
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                          }`}>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${p.is_low_stock
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            }`}>
                             {p.current_stock}
                             {p.is_low_stock && ' (Hụt)'}
                           </span>
@@ -513,7 +510,7 @@ export default function ProductsPage() {
                             >
                               <QrCode className="h-4.5 w-4.5" />
                             </button>
-                            
+
                             {isAdmin && (
                               <>
                                 <button
@@ -737,7 +734,7 @@ export default function ProductsPage() {
             >
               <X className="h-5 w-5" />
             </button>
-            
+
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 text-center">
               Nhãn Mã QR Sản Phẩm
             </h3>
@@ -761,7 +758,7 @@ export default function ProductsPage() {
                     {qrCodeData.product_code}
                   </p>
                 </div>
-                
+
                 <button
                   onClick={handlePrint}
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 py-2 text-sm font-semibold text-slate-700 dark:text-white transition-colors cursor-pointer"
@@ -800,163 +797,93 @@ export default function ProductsPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Product Code */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Mã hàng hóa *
-                  </label>
-                  <input
-                    {...register('product_code')}
-                    disabled={!categoryValue || !!editingProduct}
-                    type="text"
-                    placeholder={categoryValue ? "Mã sản phẩm (ví dụ: TS011)" : "Vui lòng chọn danh mục trước"}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-900 disabled:cursor-not-allowed"
-                  />
-                  {errors.product_code && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.product_code.message}</p>
-                  )}
-                </div>
 
-                {/* Product Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Tên sản phẩm *
-                  </label>
-                  <input
-                    {...register('name')}
-                    type="text"
-                    placeholder="Tên sản phẩm đầy đủ"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  />
-                  {errors.name && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.name.message}</p>
-                  )}
-                </div>
-
-                {/* Category Selection */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Phân mục danh mục *
-                  </label>
-                  <select
-                    {...register('category', {
-                      onChange: handleCategoryChange
-                    })}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  >
-                    <option value="">Chọn danh mục...</option>
-                    <option value="Thực phẩm tươi sống">Thực phẩm tươi sống</option>
-                    <option value="Thực phẩm khô và Nhu yếu phẩm">Thực phẩm khô và Nhu yếu phẩm</option>
-                    <option value="Đồ uống và bánh kẹo">Đồ uống và bánh kẹo</option>
-                    <option value="Hóa mỹ phẩm">Hóa mỹ phẩm</option>
-                    <option value="Đồ dùng gia đình">Đồ dùng gia đình</option>
-                  </select>
-                  {errors.category && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.category.message}</p>
-                  )}
-                </div>
-
-                {/* Unit of measure */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Đơn vị tính *
-                  </label>
-                  <select
-                    {...register('unit')}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  >
-                    <option value="">Chọn đơn vị tính...</option>
-                    <option value="Kg">Kg</option>
-                    <option value="Hộp 10 quả">Hộp 10 quả</option>
-                    <option value="Túi 5kg">Túi 5kg</option>
-                    <option value="Thùng 30 gói">Thùng 30 gói</option>
-                    <option value="Thùng 24 lon">Thùng 24 lon</option>
-                    <option value="Thùng 48 hộp x 180ml">Thùng 48 hộp x 180ml</option>
-                    <option value="Chai 1 lít">Chai 1 lít</option>
-                    <option value="Chai 900ml">Chai 900ml</option>
-                    <option value="Chai 650g">Chai 650g</option>
-                    <option value="Chai 850g">Chai 850g</option>
-                    <option value="Túi 3.6kg">Túi 3.6kg</option>
-                    <option value="Túi 3.5 lít">Túi 3.5 lít</option>
-                    <option value="Bộ">Bộ</option>
-                    <option value="Cái">Cái</option>
-                    <option value="Gói 5 cái">Gói 5 cái</option>
-                  </select>
-                  {errors.unit && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.unit.message}</p>
-                  )}
-                </div>
-
-                {/* Retail Price */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Giá bán lẻ (đ)
-                  </label>
-                  <input
-                    {...register('unit_price')}
-                    type="number"
-                    placeholder="Giá bán lẻ tiêu chuẩn"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  />
-                  {errors.unit_price && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.unit_price.message}</p>
-                  )}
-                </div>
-
-                {/* Default Location (Shelf) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Kệ chứa mặc định *
-                  </label>
-                  <select
-                    {...register('location_id')}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  >
-                    <option value="">Chọn kệ hàng chứa mặc định...</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={String(loc.id)}>
-                        {loc.location_code} ({loc.name})
-                      </option>
-                    ))}
-                  </select>
-                  {errors.location_id && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.location_id.message}</p>
-                  )}
-                </div>
-
-                {/* Min stock for alerts */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Ngưỡng báo động hụt tồn
-                  </label>
-                  <input
-                    {...register('min_stock')}
-                    type="number"
-                    placeholder="Số lượng để gửi cảnh báo hụt"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  />
-                  {errors.min_stock && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.min_stock.message}</p>
-                  )}
-                </div>
-
-                {/* Expiry Warning Days */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Thời gian cảnh báo hạn dùng (ngày)
-                  </label>
-                  <input
-                    {...register('expiry_warning_days')}
-                    type="number"
-                    placeholder="Cảnh báo trước khi hết hạn"
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500/80 focus:outline-none"
-                  />
-                  {errors.expiry_warning_days && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{errors.expiry_warning_days.message}</p>
-                  )}
+              {/* ── THÔNG TIN SẢN PHẨM ── */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Thông tin sản phẩm</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Danh mục <span className="text-red-500">*</span></label>
+                    <select {...register('category', { onChange: handleCategoryChange })}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none">
+                      <option value="">Chọn danh mục</option>
+                      <option value="Thực phẩm tươi sống">Thực phẩm tươi sống</option>
+                      <option value="Thực phẩm khô và Nhu yếu phẩm">Thực phẩm khô và Nhu yếu phẩm</option>
+                      <option value="Đồ uống và bánh kẹo">Đồ uống và bánh kẹo</option>
+                      <option value="Hóa mỹ phẩm">Hóa mỹ phẩm</option>
+                      <option value="Đồ dùng gia đình">Đồ dùng gia đình</option>
+                    </select>
+                    {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Tên sản phẩm <span className="text-red-500">*</span></label>
+                    <input {...register('name')} type="text" placeholder="Ví dụ: Sữa tươi Vinamilk"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Mã sản phẩm <span className="text-red-500">*</span></label>
+                    <input {...register('product_code')} disabled={!categoryValue || !!editingProduct} type="text"
+                      placeholder={categoryValue ? 'Ví dụ: TS011' : 'Vui lòng chọn danh mục trước'}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed" />
+                    {errors.product_code && <p className="text-xs text-red-500">{errors.product_code.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Đơn vị tính <span className="text-red-500">*</span></label>
+                    <input {...register('unit')} type="text" placeholder="Ví dụ: Hộp, Thùng, Lon, Kg..."
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.unit && <p className="text-xs text-red-500">{errors.unit.message}</p>}
+                  </div>
+                  {/* Đơn giá — nửa dòng trái */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Đơn giá bán (đ) <span className="text-red-500">*</span></label>
+                    <input {...register('unit_price')} type="number" placeholder="Ví dụ: 350000"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.unit_price && <p className="text-xs text-red-500">{errors.unit_price.message}</p>}
+                  </div>
                 </div>
               </div>
+
+              {/* ── THIẾT LẬP KHO & CẢNH BÁO ── */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-3">Thiết lập kho &amp; cảnh báo</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Kệ mặc định <span className="text-red-500">*</span></label>
+                    <select {...register('location_id')}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none">
+                      <option value="">Chọn kệ</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={String(loc.id)}>{loc.location_code} ({loc.name})</option>
+                      ))}
+                    </select>
+                    {errors.location_id && <p className="text-xs text-red-500">{errors.location_id.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Tồn tối thiểu <span className="text-red-500">*</span></label>
+                    <input {...register('min_stock')} type="number" min={0} placeholder="0"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.min_stock && <p className="text-xs text-red-500">{errors.min_stock.message}</p>}
+                  </div>
+                  {/* Hạn bán = min_days_to_sell */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Hạn bán (ngày) <span className="text-red-500">*</span></label>
+                    <input {...register('min_days_to_sell')} type="number" min={0} placeholder="7"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.min_days_to_sell && <p className="text-xs text-red-500">{errors.min_days_to_sell.message}</p>}
+                    <p className="text-[11px] text-slate-400 leading-snug">Không xuất nếu HSD còn lại dưới số ngày này</p>
+                  </div>
+                  {/* Cảnh báo HSD = expiry_warning_days */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Cảnh báo HSD <span className="text-red-500">*</span></label>
+                    <input {...register('expiry_warning_days')} type="number" min={0} placeholder="30"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 px-3 text-sm text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    {errors.expiry_warning_days && <p className="text-xs text-red-500">{errors.expiry_warning_days.message}</p>}
+                    <p className="text-[11px] text-slate-400 leading-snug">Gửi cảnh báo khi HSD còn dưới số ngày này</p>
+                  </div>
+                </div>
+              </div>
+
 
               {/* Description */}
               <div className="space-y-1.5">
@@ -974,10 +901,10 @@ export default function ProductsPage() {
               {/* Linking Contract Prices (Multiple Suppliers Selection) */}
               <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/20 p-4">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                  Liên kết nhà cung cấp và bảng giá bán buôn (Wholesale prices)
+                  Liên kết nhà cung cấp và bảng giá bán buôn
                 </label>
                 <p className="text-[11px] text-slate-500">
-                  Chọn nhà cung cấp phân phối sản phẩm này và điền giá nhập hợp đồng cùng thời gian chuẩn bị hàng.
+                  Chọn nhà cung cấp phân phối sản phẩm này và điền giá nhập hợp đồng.
                 </p>
 
                 <div className="max-h-40 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
@@ -994,7 +921,7 @@ export default function ProductsPage() {
                           />
                           <span className="truncate max-w-[280px]">{sup.name}</span>
                         </label>
-                        
+
                         {isChecked && (
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5">

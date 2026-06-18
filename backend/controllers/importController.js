@@ -332,6 +332,10 @@ exports.markArrived = async (req, res) => {
       },
     });
 
+    // Thông báo realtime: chuông tự cập nhật trên mọi trình duyệt
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'import_arrived', receipt_id: id });
+
     return res.json({ message: 'Đã xác nhận hàng về kho.', receipt: updated });
   } catch (err) {
     console.error('markArrived error:', err);
@@ -451,6 +455,10 @@ exports.inspect = async (req, res) => {
       },
     });
 
+    // Thông báo realtime: Admin nhận ngay thông báo có phiếu chờ duyệt
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'import_inspected', receipt_id: id });
+
     if (send_email_notification) {
       try {
         const receiptWithDetails = await prisma.importReceipt.findUnique({
@@ -556,6 +564,10 @@ exports.complete = async (req, res) => {
       },
     });
 
+    // Thông báo realtime: phiếu đã duyệt xong → chuông biến mất trên mọi trình duyệt
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'import_completed', receipt_id: id });
+
     return res.json({ message: 'Phiếu nhập đã được hoàn tất và nhập kho thành công.', receipt: updated });
   } catch (err) {
     console.error('complete import error:', err);
@@ -589,6 +601,10 @@ exports.cancel = async (req, res) => {
           : receipt.issue_notes,
       },
     });
+
+    // Thông báo realtime khi hủy phiếu
+    const io = req.app.get('io');
+    if (io) io.emit('new_notification', { type: 'import_cancelled', receipt_id: id });
 
     return res.json({ message: 'Phiếu nhập đã bị huỷ.', receipt: updated });
   } catch (err) {

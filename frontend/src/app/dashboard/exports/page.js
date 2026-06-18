@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { io } from 'socket.io-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDialogStore } from '@/store/useDialogStore';
 import {
   ArrowUpFromLine, Plus, Search, Filter, RefreshCw,
   Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown,
   ShoppingCart, CornerUpLeft, PackageOpen, Share2, AlertCircle,
-  CheckCircle2, XCircle, Clock, Download
+  CheckCircle2, XCircle, Clock, Download, Wifi
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -130,6 +131,7 @@ export default function ExportsPage() {
 
   // Stats
   const [stats, setStats] = useState(null);
+  const [isLive, setIsLive] = useState(false);
 
   // ── fetch list ─────────────────────────────────────────────
   const fetchReceipts = useCallback(async () => {
@@ -164,6 +166,24 @@ export default function ExportsPage() {
   }, [token]);
 
   useEffect(() => { fetchReceipts(); fetchStats(); }, [fetchReceipts, fetchStats]);
+
+  // ── Socket.IO: Realtime auto-refresh ───────────────────────
+  useEffect(() => {
+    const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
+    const socket = io(socketUrl, { reconnectionAttempts: 5 });
+
+    socket.on('connect', () => setIsLive(true));
+    socket.on('disconnect', () => setIsLive(false));
+    socket.on('connect_error', () => setIsLive(false));
+
+    // Khi có sự kiện mới (admin duyệt phếu RETURN, tạo phếu xuất mới...) → tự reload
+    socket.on('new_notification', () => {
+      fetchReceipts();
+      fetchStats();
+    });
+
+    return () => socket.disconnect();
+  }, [fetchReceipts, fetchStats]);
 
   const applyFilter = () => {
     setFilterSearch(search);
@@ -221,7 +241,15 @@ export default function ExportsPage() {
             <ArrowUpFromLine className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Phiếu xuất kho</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Phiếu xuất kho</h1>
+              {isLive && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <Wifi className="h-2.5 w-2.5" />
+                  LIVE
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {pagination.total} phiếu xuất
             </p>
