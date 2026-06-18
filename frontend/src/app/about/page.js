@@ -27,34 +27,11 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto max-w-3xl px-6 py-16">
-        <p className="text-sm font-semibold uppercase tracking-wider text-cyan-600">INT1334 — Lập trình Web</p>
         <h1 className="mt-2 text-4xl font-bold">Hệ thống Quản lý Kho thông minh (WMS)</h1>
         <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
           Ứng dụng fullstack quản lý nhập xuất, tồn kho, cảnh báo và đề xuất bổ sung hàng cho chuỗi
-          cung ứng bán lẻ.
+          cung ứng.
         </p>
-
-        <section className="mt-10 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="text-xl font-semibold">Chiến lược rendering (Next.js App Router)</h2>
-          <ul className="list-disc space-y-2 pl-6 text-slate-600 dark:text-slate-400">
-            <li>
-              <strong>SSG</strong> — Trang About (trang này): nội dung tĩnh khi build.
-            </li>
-            <li>
-              <strong>ISR</strong> — Dashboard: <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">revalidate = 60</code>.
-            </li>
-            <li>
-              <strong>SSR</strong> — Danh sách phiếu nhập: fetch server mỗi request.
-            </li>
-          </ul>
-        </section>
-
-        <section className="mt-6 space-y-2 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="text-xl font-semibold">Tech stack</h2>
-          <p className="text-slate-600 dark:text-slate-400">
-            Next.js, Express, Prisma, PostgreSQL (Neon), JWT + Refresh Token (DB), Zustand, React Hook Form + Zod.
-          </p>
-        </section>
 
         <div className="mt-10 flex flex-wrap gap-4">
           <Link
