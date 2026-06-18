@@ -38,7 +38,7 @@ const userEditSchema = z.object({
 });
 
 export default function UsersPage() {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, updateUser } = useAuthStore();
   const { showAlert, showConfirm } = useDialogStore();
   const router = useRouter();
 
@@ -153,7 +153,11 @@ export default function UsersPage() {
 
     try {
       if (editingUser) {
-        await api.put(`/users/${editingUser.id}`, payload);
+        const res = await api.put(`/users/${editingUser.id}`, payload);
+        // Nếu admin tự sửa tài khoản của chính mình, cập nhật trạng thái auth cục bộ
+        if (currentUser && currentUser.id === editingUser.id) {
+          updateUser(res.data);
+        }
       } else {
         await api.post('/users', payload);
       }
