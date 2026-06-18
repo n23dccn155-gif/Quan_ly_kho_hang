@@ -264,7 +264,7 @@ export default function DashboardLayout({ children }) {
                   <Bell className={`h-5 w-5 ${alertCount > 0 ? 'animate-pulse text-red-400' : ''}`} strokeWidth={2} />
                   {alertCount > 0 && (
                     <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-slate-800">
-                      {alertCount > 9 ? '9+' : alertCount}
+                      {alertCount > 99 ? '99+' : alertCount}
                     </span>
                   )}
                 </button>
