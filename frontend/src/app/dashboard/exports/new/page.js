@@ -20,6 +20,7 @@ import {
   X,
   QrCode,
   MapPin,
+  Loader2,
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -73,7 +74,56 @@ export default function NewExportPage() {
   const [longitude, setLongitude] = useState(null);
   const [distanceKm, setDistanceKm] = useState(null);
   const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState(null);
-  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+
+  const handleGeocodeAddress = async () => {
+    if (!deliveryAddress || deliveryAddress.trim().length < 5) {
+      showAlert('Lỗi', 'Vui lòng điền địa chỉ đầy đủ (ít nhất 5 ký tự) trước khi định vị.');
+      return;
+    }
+
+    setGeocoding(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(deliveryAddress)}&limit=1`
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+
+        setLatitude(Number(lat.toFixed(6)));
+        setLongitude(Number(lon.toFixed(6)));
+
+        try {
+          const osrmRes = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/106.660172,10.762622;${lon},${lat}`
+          );
+          const osrmData = await osrmRes.json();
+          if (osrmData.routes && osrmData.routes.length > 0) {
+            const distance = Number((osrmData.routes[0].distance / 1000).toFixed(1));
+            setDistanceKm(distance);
+            const days = Math.floor(distance / 50) + (distance % 50 > 0 ? 1 : 0) - 1;
+            setEstimatedDeliveryDays(Math.max(0, days));
+          } else {
+            setDistanceKm(0);
+            setEstimatedDeliveryDays(0);
+          }
+        } catch (e) {
+          setDistanceKm(0);
+          setEstimatedDeliveryDays(0);
+        }
+      } else {
+        showAlert('Lỗi', 'Không tìm thấy tọa độ địa lý cho địa chỉ này. Vui lòng ghim trực tiếp trên bản đồ.');
+      }
+    } catch (error) {
+      console.error('Nominatim Geocoding error:', error);
+      showAlert('Lỗi', 'Lỗi kết nối định vị. Vui lòng thử ghim trên bản đồ.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -551,18 +601,18 @@ export default function NewExportPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setIsMapOpen(true)}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  onClick={handleGeocodeAddress}
+                  disabled={geocoding}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-50 transition-colors"
                 >
-                  <MapPin className="h-5 w-5 text-indigo-500" />
-                  Bản đồ
+                  {geocoding ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <MapPin className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+                  )}
+                  Định vị
                 </button>
               </div>
-              {distanceKm !== null && (
-                <p className="ml-1 mt-2 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                  📍 Khoảng cách: {distanceKm} km — Dự kiến giao: {estimatedDeliveryDays} ngày
-                </p>
-              )}
             </div>
           )}
 
@@ -576,6 +626,37 @@ export default function NewExportPage() {
             />
           </label>
         </section>
+
+        {reason === 'SELL' && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-indigo-500" />
+                Vị trí giao hàng & Tuyến đường dự kiến (OSRM)
+              </h2>
+              {distanceKm !== null && (
+                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 px-3 py-1.5 rounded-lg dark:bg-emerald-950/30">
+                  Cự ly: {distanceKm} km — Dự kiến: {estimatedDeliveryDays === 0 ? 'Trong ngày' : `${estimatedDeliveryDays} ngày`}
+                </div>
+              )}
+            </div>
+            <div className="h-[400px] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 relative z-0">
+              <SupplierMap
+                mode="select"
+                selectedLat={latitude || 10.762622}
+                selectedLng={longitude || 106.660172}
+                onPositionSelected={(lat, lng, distance) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                  setDistanceKm(distance);
+                  // Calculate ETA: 1 day per 50km
+                  const days = Math.floor(distance / 50) + (distance % 50 > 0 ? 1 : 0) - 1;
+                  setEstimatedDeliveryDays(Math.max(0, days));
+                }}
+              />
+            </div>
+          </section>
+        )}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -897,51 +978,6 @@ export default function NewExportPage() {
       )}
       {isQrOpen && (
         <QRScannerModal isOpen={isQrOpen} onClose={() => setIsQrOpen(false)} onScanSuccess={handleQrScanSuccess} />
-      )}
-
-      {isMapOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setIsMapOpen(false)}>
-          <div className="flex h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-indigo-500" />
-                Chọn vị trí giao hàng trên bản đồ
-              </h2>
-              <button onClick={() => setIsMapOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 relative bg-slate-50 dark:bg-slate-950/50">
-              <SupplierMap
-                mode="select"
-                selectedLat={latitude}
-                selectedLng={longitude}
-                onPositionSelected={(lat, lng, distance) => {
-                  setLatitude(lat);
-                  setLongitude(lng);
-                  setDistanceKm(distance);
-                  // Calculate ETA: 1 day per 50km
-                  const days = Math.floor(distance / 50) + (distance % 50 > 0 ? 1 : 0) - 1;
-                  setEstimatedDeliveryDays(Math.max(0, days));
-                }}
-              />
-            </div>
-            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex justify-between items-center dark:border-slate-800 dark:bg-slate-950/50">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {distanceKm !== null 
-                  ? `Khoảng cách: ${distanceKm} km (Dự kiến: ${estimatedDeliveryDays} ngày)` 
-                  : 'Hãy ghim một vị trí trên bản đồ để tính khoảng cách'}
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsMapOpen(false)}
-                className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500"
-              >
-                Xong
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
