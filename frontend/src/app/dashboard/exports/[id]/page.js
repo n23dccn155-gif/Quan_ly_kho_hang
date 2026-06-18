@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDialogStore } from '@/store/useDialogStore';
+import { io } from 'socket.io-client';
 import {
   ArrowUpFromLine, ArrowLeft, CheckCircle2,
   XCircle, Clock, AlertCircle, Building2,
@@ -95,7 +96,23 @@ export default function ExportDetailPage() {
     }
   }, [id, token]);
 
-  useEffect(() => { fetchReceipt(); }, [fetchReceipt]);
+  useEffect(() => {
+    fetchReceipt();
+    
+    // Connect to Socket.io for realtime updates on receipt status
+    const getSocketUrl = () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+      return apiUrl.replace(/\/api\/?$/, '');
+    };
+    const socket = io(getSocketUrl());
+    socket.on('new_notification', () => {
+      fetchReceipt();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchReceipt]);
 
   // ── Workflow actions ────────────────────────────────────────
   const doAction = async (action, body = {}) => {

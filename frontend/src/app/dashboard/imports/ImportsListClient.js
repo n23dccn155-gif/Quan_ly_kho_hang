@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
+import { io } from 'socket.io-client';
 import {
   ArrowDownToLine, Plus, Search, Filter, RefreshCw,
   Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown,
@@ -144,7 +145,25 @@ export default function ImportsListClient({ initialData = null }) {
     } catch (_) {}
   }, [token]);
 
-  useEffect(() => { fetchReceipts(); fetchStats(); }, [fetchReceipts, fetchStats]);
+  useEffect(() => {
+    fetchReceipts();
+    fetchStats();
+    
+    // Connect to Socket.io for realtime updates on receipt list and stats
+    const getSocketUrl = () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+      return apiUrl.replace(/\/api\/?$/, '');
+    };
+    const socket = io(getSocketUrl());
+    socket.on('new_notification', () => {
+      fetchReceipts();
+      fetchStats();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchReceipts, fetchStats]);
 
   // reset page khi filter thay đổi
   const applyFilter = () => {
