@@ -8,15 +8,19 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { io } from 'socket.io-client';
 import {
   ArrowUpFromLine, ArrowLeft, CheckCircle2,
-  XCircle, Clock, AlertCircle, Building2,
+  XCircle, Clock, AlertCircle, Building2, Truck, Navigation,
   Calendar, User, FileText, ShoppingCart, Share2, PackageOpen, CornerUpLeft,
   MapPin, Hash, DollarSign, Loader2, Printer
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const SupplierMap = dynamic(() => import('@/components/SupplierMap'), { ssr: false });
 
 import api from '@/lib/api';
 // ─── Configs ──────────────────────────────────────────────────
 const STATUS_MAP = {
   PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30', icon: Clock },
+  DELIVERING:       { label: 'Đang giao hàng', color: 'bg-cyan-500/15 text-cyan-500 border-cyan-500/30', icon: Truck },
   COMPLETED:        { label: 'Hoàn tất',  color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
   CANCELLED:        { label: 'Đã huỷ',    color: 'bg-red-500/15 text-red-400 border-red-500/30',       icon: XCircle },
 };
@@ -136,6 +140,14 @@ export default function ExportDetailPage() {
     );
   };
 
+  const handleCompleteDelivery = () => {
+    showConfirm(
+      'Xác nhận giao hàng',
+      'Xác nhận đã giao hàng thành công tới khách hàng?',
+      () => doAction('complete-delivery')
+    );
+  };
+
   const submitReject = () => {
     doAction('reject', { rejection_note: rejectReason });
     setShowReject(false);
@@ -251,6 +263,16 @@ export default function ExportDetailPage() {
                 Từ chối duyệt
               </button>
             </>
+          )}
+          {receipt.status === 'DELIVERING' && (
+            <button
+              onClick={handleCompleteDelivery}
+              disabled={!!actionLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-cyan-500 disabled:opacity-50 transition-colors"
+            >
+              {actionLoading === 'complete-delivery' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+              Xác nhận đã giao hàng
+            </button>
           )}
           {user?.role === 'admin' && receipt.status === 'COMPLETED' && (
             <button
@@ -400,6 +422,53 @@ export default function ExportDetailPage() {
               </table>
             </div>
           </div>
+
+          {/* Map Info */}
+          {receipt.reason === 'SELL' && receipt.latitude && receipt.longitude && (
+            <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+                <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <Navigation className="h-4 w-4 text-indigo-400" />
+                  Thông tin vận chuyển & Bản đồ tracking
+                </h2>
+              </div>
+              <div className="p-5 flex flex-col gap-4">
+                <div className="flex flex-wrap gap-6 text-sm bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block mb-1 text-xs uppercase font-bold">Điểm đến</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{receipt.delivery_address}</span>
+                  </div>
+                  <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
+                    <span className="text-slate-500 dark:text-slate-400 block mb-1 text-xs uppercase font-bold">Cự ly</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">{receipt.distance_km} km</span>
+                  </div>
+                  <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
+                    <span className="text-slate-500 dark:text-slate-400 block mb-1 text-xs uppercase font-bold">Dự kiến hoàn thành</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                      {receipt.estimated_delivery_days === 0 ? 'Trong ngày' : `${receipt.estimated_delivery_days} ngày`}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-96 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm relative z-0">
+                  <SupplierMap 
+                    mode="view"
+                    suppliers={[{
+                      id: 1, 
+                      name: receipt.customer_name || 'Khách hàng', 
+                      latitude: receipt.latitude, 
+                      longitude: receipt.longitude,
+                      distance_km: receipt.distance_km
+                    }]}
+                    selectedSupplier={{
+                      id: 1, 
+                      latitude: receipt.latitude, 
+                      longitude: receipt.longitude
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

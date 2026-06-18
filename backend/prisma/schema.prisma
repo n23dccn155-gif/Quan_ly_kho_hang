@@ -182,9 +182,13 @@ model ExportReceipt {
   export_date      DateTime       @db.Date
   reason           String         @default("SELL") @db.VarChar(50) // "SELL", "RETURN", "INTERNAL", "DISPOSE"
   total_amount     Decimal        @default(0) @db.Decimal(15, 2)
-  status           String         @default("COMPLETED") @db.VarChar(20) // "COMPLETED", "CANCELLED"
+  status           String         @default("COMPLETED") @db.VarChar(20) // "PENDING_APPROVAL", "DELIVERING", "COMPLETED", "CANCELLED"
   customer_name    String?        @db.VarChar(255)
   delivery_address String?        @db.VarChar(500)
+  latitude         Decimal?       @db.Decimal(10, 7)
+  longitude        Decimal?       @db.Decimal(10, 7)
+  distance_km      Decimal?       @db.Decimal(8, 1)
+  estimated_delivery_days Int?
   note             String?        @db.Text
   supplier_id      Int?
   approved_by      Int?
